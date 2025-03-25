@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beans News</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        /* Header Section */
+        .header {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-container label {
+            font-size: 14px;
+            color: #4a4a4a;
+            font-weight: 500;
+        }
+
+        .filter-container select {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .filter-container select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .article-counts {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .article-counts span {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        /* Articles Container */
+        .articles-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .article-card {
+            background-color: white;
+            border-radius: 2px;
+            border: 3px;
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Ensure cards stretch to the same height */
+        }
+
+        .article-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+        .article-content {
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .article-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .article-tags {
+            margin-bottom: 10px;
+        }
+
+        .tag {
+            display: inline-block;
+            background-color: #e5e7eb;
+            border: 1px #4a4a4a;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .tag.top {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .tag.author {
+            background-color: #ff4d4f;
+            color: white;
+        }
+
+        .article-description {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 4; /* Limit to 4 lines */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .article-meta {
+            display: flex;
+            align-items: center;
+            font-size: 8px;
+            color: #9ca3af;
+            gap: 5px;
+            margin-top: auto; /* Push meta to the bottom of the card */
+        }
+
+        .article-source {
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #4a4a4a;
+        }
+
+        .article-meta .dot {
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .article-timestamp {
+            display: flex;
+            align-items: center;
+        }
+
+        .error-message {
+            text-align: center;
+            color: #ff4d4f;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .pagination {
+            text-align: center;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .pagination button:disabled {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            margin: 0 10px;
+            font-size: 14px;
+            color: #4a4a4a;
+            font-weight: 500;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .header-controls {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .filter-container {
+                width: 100%;
+            }
+
+            .filter-container select {
+                width: 100%;
+            }
+
+            .article-counts {
+                font-size: 12px;
+            }
+
+            .articles-container {
+                grid-template-columns: 1fr;
+            }
+
+            .article-card {
+                margin: 0 10px;
+            }
+
+            .article-description {
+                font-size: 13px; /* Slightly smaller font for mobile */
+                -webkit-line-clamp: 3; /* Limit to 3 lines on mobile */
+            }
+
+            .pagination button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .pagination span {
+                font-size: 12px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>Beans News</h1>
+        <div class="header-controls">
+            <div class="filter-container">
+                <label for="shopifyFilter">Filter by Shopify Status:</label>
+                <select id="shopifyFilter" onchange="handleFilterChange()">
+                    <option value="all">All Articles</option>
+                    <option value="sent">Sent to Shopify</option>
+                    <option value="not-sent">Not Sent to Shopify</option>
+                </select>
+            </div>
+            <div class="article-counts">
+                Showing <span id="currentCount">0</span> of <span id="totalCount">0</span> articles
+            </div>
+        </div>
+    </div>
+    <div class="articles-container" id="articlesContainer"></div>
+    <div class="pagination" id="pagination"></div>
+    <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalArticles = 0;
+        let shopifyFilter = 'all'; // Default filter: show all articles
+
+        // Function to format the date in the desired format (e.g., "22 Mar, 2025 @ 23:03")
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const day = date.getDate();
+            const month = date.toLocaleString('default', { month: 'short' });
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day} ${month}, ${year} @ ${hours}:${minutes}`;
+        }
+
+        // Function to truncate description based on character count and sentence completion
+        function truncateDescription(description) {
+            if (!description || typeof description !== 'string') {
+                return 'No description available.';
+            }
+
+            const maxChars = 300; // Maximum character limit
+            let truncated = description.trim();
+
+            // Case 1: Description is under 300 characters
+            if (truncated.length <= maxChars) {
+                // Check if the description ends with a complete sentence (ends with '.', '!', or '?')
+                if (!/[.!?]$/.test(truncated)) {
+                    return truncated + '...'; // Append ... if it's an unfinished sentence
+                }
+                return truncated; // Return as-is if it ends with punctuation
+            }
+
+            // Case 2: Description is over 300 characters, truncate at the nearest full stop
+            const sentences = truncated.split(/(?<=[.!?])\s+/);
+            let currentLength = 0;
+            let selectedSentences = [];
+
+            for (const sentence of sentences) {
+                // Only include sentences that end with punctuation
+                if (!/[.!?]$/.test(sentence)) {
+                    break; // Stop if we encounter an incomplete sentence
+                }
+
+                const newLength = currentLength + sentence.length + (selectedSentences.length > 0 ? 1 : 0); // +1 for space between sentences
+                if (newLength > maxChars) {
+                    break;
+                }
+
+                selectedSentences.push(sentence);
+                currentLength = newLength;
+            }
+
+            if (selectedSentences.length > 0) {
+                return selectedSentences.join(' ').trim();
+            }
+
+            // Fallback: If no complete sentences fit within maxChars, truncate at maxChars and append ...
+            const lastSpaceIndex = truncated.substring(0, maxChars).lastIndexOf(' ');
+            if (lastSpaceIndex !== -1) {
+                return truncated.substring(0, lastSpaceIndex) + '...';
+            }
+            return truncated.substring(0, maxChars) + '...';
+        }
+
+        // Function to handle filter change
+        function handleFilterChange() {
+            shopifyFilter = document.getElementById('shopifyFilter').value;
+            currentPage = 1; // Reset to first page when filter changes
+            fetchArticles();
+        }
+
+        // Function to render articles
+        function renderArticles(articles) {
+            const articlesContainer = document.getElementById('articlesContainer');
+            const errorMessage = document.getElementById('errorMessage');
+            const currentCount = document.getElementById('currentCount');
+            articlesContainer.innerHTML = '';
+            errorMessage.style.display = 'none';
+
+            if (!articles || articles.length === 0) {
+                errorMessage.textContent = 'No articles found.';
+                errorMessage.style.display = 'block';
+                currentCount.textContent = '0';
+                return;
+            }
+
+            // Update the current count
+            currentCount.textContent = articles.length;
+
+            articles.forEach(article => {
+                const card = document.createElement('div');
+                card.className = 'article-card';
+
+                // Content container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'article-content';
+
+                // Title
+                const title = document.createElement('h2');
+                title.className = 'article-title';
+                title.textContent = article.title;
+                contentDiv.appendChild(title);
+
+                // Image (or placeholder if no image)
+                const imageDiv = document.createElement('div');
+                if (article.image && article.image.filename_disk) {
+                    const img = document.createElement('img');
+                    img.src = article.image.filename_disk;
+                    img.className = 'article-image';
+                    img.alt = article.title;
+                    imageDiv.appendChild(img);
+                } else {
+                    imageDiv.className = 'article-image placeholder';
+                    imageDiv.textContent = 'No Image Available';
+                }
+                contentDiv.appendChild(imageDiv);
+
+                // Tags
+                const tagsDiv = document.createElement('div');
+                tagsDiv.className = 'article-tags';
+                article.tags.forEach(tag => {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = `tag ${tag.toLowerCase() === 'top' ? 'top' : ''}`;
+                    tagSpan.textContent = tag;
+                    tagsDiv.appendChild(tagSpan);
+                });
+                contentDiv.appendChild(tagsDiv);
+
+                // Description
+                const description = document.createElement('p');
+                description.className = 'article-description';
+                description.textContent = truncateDescription(article.description);
+                contentDiv.appendChild(description);
+
+                // Meta (Source and Timestamp)
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'article-meta';
+
+                const sourceSpan = document.createElement('span');
+                sourceSpan.className = 'article-source';
+                sourceSpan.textContent = article.attribution.toUpperCase();
+                metaDiv.appendChild(sourceSpan);
+
+                const dotSpan = document.createElement('span');
+                dotSpan.className = 'dot';
+                dotSpan.textContent = '·';
+                metaDiv.appendChild(dotSpan);
+
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'article-timestamp';
+                timestampDiv.textContent = formatDate(article.publishDate);
+                metaDiv.appendChild(timestampDiv);
+
+                contentDiv.appendChild(metaDiv);
+                card.appendChild(contentDiv);
+                articlesContainer.appendChild(card);
+            });
+        }
+
+        // Function to render pagination controls
+        function renderPagination() {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Previous';
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    fetchArticles();
+                }
+            };
+            paginationDiv.appendChild(prevButton);
+
+            const pageInfo = document.createElement('span');
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            paginationDiv.appendChild(pageInfo);
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    fetchArticles();
+                }
+            };
+            paginationDiv.appendChild(nextButton);
+        }
+
+        // Function to fetch and display articles
+        async function fetchArticles() {
+            const articlesContainer = document.getElementById('articlesContainer');
+            const errorMessage = document.getElementById('errorMessage');
+            const totalCount = document.getElementById('totalCount');
+            errorMessage.style.display = 'none';
+
+            try {
+                // Build the query parameters based on the filter
+                let url = `http://192.168.0.44:3000/api/articles?page=${currentPage}`;
+                if (shopifyFilter !== 'all') {
+                    const sentToShopify = shopifyFilter === 'sent' ? 'true' : 'false';
+                    url += `&sentToShopify=${sentToShopify}`;
+                }
+
+                // Fetch articles with the current page and filter
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch articles');
+                }
+
+                const data = await response.json();
+                const articles = data.data.Beans_News_Articles;
+                totalPages = data.pages || 1;
+                currentPage = data.page || 1;
+                totalArticles = data.total || 0;
+
+                // Update the total count
+                totalCount.textContent = totalArticles;
+
+                renderArticles(articles);
+                renderPagination();
+            } catch (error) {
+                console.error('Error fetching articles:', error);
+                errorMessage.textContent = 'Error loading articles. Please try again later.';
+                errorMessage.style.display = 'block';
+                document.getElementById('currentCount').textContent = '0';
+            }
+        }
+
+        // Fetch articles when the page loads
+        window.onload = fetchArticles;
+    </script>
+</body>
+</html>

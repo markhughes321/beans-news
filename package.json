@@ -1,0 +1,52 @@
+{
+  "name": "beans-news",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "db:setup": "docker run -d -p 27017:27017 --name beansMongo -v mongo-data:/data/db --restart unless-stopped mongo:latest",
+    "db:start": "docker start beansMongo",
+    "db:stop": "docker stop beansMongo",
+    "db:remove": "docker rm -f beansMongo",
+    "db:logs": "docker logs beansMongo --tail 20",
+    "db:status": "docker ps -a --filter name=beansMongo",
+    "app:start": "node src/server.js",
+    "app:start-pm": "pm2 start src/server.js --name beans-news",
+    "app:stop-pm": "pm2 stop beans-news",
+    "app:restart-pm": "pm2 restart beans-news",
+    "app:logs": "pm2 logs beans-news --lines 20",
+    "app:status": "pm2 status",
+    "app:cleanup": "pm2 delete beans-news",
+    "debug:ports": "sudo netstat -tuln | grep '3000\\|27017'",
+    "start:fe": "http-server -p 8080",
+    "api:articles": "curl http://192.168.0.44:3000/api/articles",
+    "api:trigger-rss": "curl http://192.168.0.44:3000/api/trigger/rss",
+    "api:drop-articles": "curl -X DELETE http://192.168.0.44:3000/api/articles/drop",
+    "api:reset-and-scrape": "curl -X POST http://192.168.0.44:3000/api/trigger/reset-and-scrape",
+    "api:shopify-sync": "curl -X GET http://localhost:3000/api/trigger/shopify-sync"
+  },
+  "author": "Mark",
+  "license": "ISC",
+  "description": "A coffee news aggregator fetching from RSS feeds, scraping, and APIs",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "axios-retry": "^4.5.0",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "he": "^1.2.0",
+    "joi": "^17.13.3",
+    "mongoose": "^8.12.2",
+    "mongosh": "^2.4.2",
+    "node-cron": "^3.0.3",
+    "p-limit": "^6.2.0",
+    "pm2": "^6.0.5",
+    "rss-parser": "^3.13.0",
+    "striptags": "^3.2.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "dotenv-safe": "^9.1.0"
+  }
+}
