@@ -1,4 +1,3 @@
-// File: ./src/parsers/defaultParser.js
 const logger = require('../config/logger');
 const he = require('he');
 const striptags = require('striptags');
@@ -40,28 +39,30 @@ class DefaultParser {
       return 'No description available.';
     }
 
-    // Step 1: Strip HTML tags
     let descriptionClean = striptags(descriptionRaw);
-
-    // Step 2: Decode HTML entities (e.g., & to &)
     descriptionClean = he.decode(descriptionClean);
 
-    // Step 3: Remove boilerplate patterns (if provided)
     boilerplatePatterns.forEach(pattern => {
       descriptionClean = descriptionClean.replace(pattern, '').trim();
     });
 
-    // Step 4: Normalize whitespace (replace \r\n, multiple spaces, etc.)
     descriptionClean = descriptionClean
-      .replace(/(\r\n|\n|\r)/g, ' ') // Replace newlines with spaces
-      .replace(/\s+/g, ' ') // Collapse multiple spaces into one
-      .trim(); // Remove leading/trailing spaces
+      .replace(/(\r\n|\n|\r)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    // Step 5: Remove trailing ellipsis if present in the source data
     descriptionClean = descriptionClean.replace(/\.\.\.$/, '').trim();
 
-    // No truncation; return the full cleaned description
     return descriptionClean || 'No description available.';
+  }
+
+  toTitleCase(str) {
+    if (!str || typeof str !== 'string') return str;
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 }
 

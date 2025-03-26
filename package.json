@@ -22,7 +22,8 @@
     "api:trigger-rss": "curl http://192.168.0.44:3000/api/trigger/rss",
     "api:drop-articles": "curl -X DELETE http://192.168.0.44:3000/api/articles/drop",
     "api:reset-and-scrape": "curl -X POST http://192.168.0.44:3000/api/trigger/reset-and-scrape",
-    "api:shopify-sync": "curl -X GET http://localhost:3000/api/trigger/shopify-sync"
+    "api:shopify-sync": "curl -X GET http://localhost:3000/api/trigger/shopify-sync",
+    "api:reprocess-gpt-fails": "curl -X POST http://localhost:3000/api/trigger/reprocess-failed"
   },
   "author": "Mark",
   "license": "ISC",
@@ -39,6 +40,7 @@
     "mongoose": "^8.12.2",
     "mongosh": "^2.4.2",
     "node-cron": "^3.0.3",
+    "openai": "^4.89.0",
     "p-limit": "^6.2.0",
     "pm2": "^6.0.5",
     "rss-parser": "^3.13.0",

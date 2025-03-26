@@ -1,9 +1,10 @@
-// File: ./src/services/shopifyService.js
 const axios = require('axios');
 const logger = require('../config/logger');
 const Article = require('../models/Article');
+const DefaultParser = require('../parsers/defaultParser');
 
-// Shopify GraphQL API endpoint
+const parser = new DefaultParser();
+
 const SHOPIFY_API_URL = 'https://b4cd1f-0d.myshopify.com/admin/api/2023-04/graphql.json';
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
@@ -12,15 +13,10 @@ if (!SHOPIFY_ACCESS_TOKEN) {
   throw new Error('SHOPIFY_ACCESS_TOKEN is required');
 }
 
-/**
- * Sends articles to Shopify as metaobjects.
- * @returns {Promise<void>}
- */
 async function sendArticlesToShopify() {
   try {
-    // Fetch articles that haven't been sent to Shopify
     const articles = await Article.find({ sentToShopify: { $ne: true } })
-      .select('title link source publishedAt description domain image tags _id')
+      .select('title link source publishedAt description description_improved domain image tags category geotag _id metaStatus')
       .lean();
 
     if (articles.length === 0) {
@@ -34,11 +30,15 @@ async function sendArticlesToShopify() {
 
     for (const article of articles) {
       try {
-        // Prepare the Shopify metaobject input
+        if (article.metaStatus !== 'success') {
+          logger.warn(`Skipping article ${article._id} with metaStatus '${article.metaStatus}' for Shopify sync: ${article.link}`);
+          continue;
+        }
+
         const handle = article.title
           .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric characters with hyphens
-          .replace(/-+/g, '-') // Collapse multiple hyphens
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/-+/g, '-')
           .substring(0, 50) + '-' + article.publishedAt.toISOString().split('T')[0].replace(/-/g, '');
 
         const input = {
@@ -53,16 +53,17 @@ async function sendArticlesToShopify() {
             { key: 'uuid', value: article._id.toString() },
             { key: 'publishdate', value: article.publishedAt.toISOString() },
             { key: 'title', value: article.title },
-            { key: 'description', value: article.description || 'No description available.' },
+            { key: 'description', value: article.description_improved || article.description || 'No description available.' },
             { key: 'url', value: article.link },
             { key: 'attribution', value: article.source },
             { key: 'domain', value: article.domain },
-            { key: 'image', value: article.image?.filename_disk || '' },
-            { key: 'tags', value: article.tags.join(', ') },
+            { key: 'image', value: article.image.filename_disk },
+            { key: 'tags', value: article.tags ? article.tags.map(tag => parser.toTitleCase(tag)).join(', ') : '' },
+            { key: 'category', value: parser.toTitleCase(article.category || 'Culture') },
+            { key: 'geotag', value: article.geotag ? parser.toTitleCase(article.geotag) : '' },
           ],
         };
 
-        // GraphQL mutation
         const mutation = `
           mutation MetaobjectCreate($input: MetaobjectCreateInput!) {
             metaobjectCreate(metaobject: $input) {
@@ -79,7 +80,6 @@ async function sendArticlesToShopify() {
           }
         `;
 
-        // Send the request to Shopify
         const response = await axios.post(
           SHOPIFY_API_URL,
           {
@@ -118,7 +118,6 @@ async function sendArticlesToShopify() {
 
         logger.info(`Successfully sent article to Shopify: ${article.link} (Shopify ID: ${metaobject.id})`);
 
-        // Mark the article as sent
         await Article.updateOne({ _id: article._id }, { sentToShopify: true });
 
       } catch (error) {

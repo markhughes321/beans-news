@@ -1,33 +1,27 @@
 const axios = require('axios');
-const axiosRetry = require('axios-retry');
+const axiosRetry = require('axios-retry').default;
 const DefaultParser = require('./defaultParser');
-const logger = require('../config/logger'); 
+const logger = require('../config/logger');
 
-// Configure axios with retries
 axiosRetry(axios, {
   retries: 3,
   retryDelay: (retryCount) => retryCount * 1000,
-  retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error),
+  retryCondition: (error) => {
+    return (
+      axiosRetry.isNetworkError(error) ||
+      axiosRetry.isRetryableError(error)
+    );
+  },
   onRetry: (retryCount, error) => {
     logger.warn(`Retry attempt ${retryCount} for request: ${error.config.url} - ${error.message}`);
   },
 });
 
-/**
- * Default parser for API endpoints.
- */
 class APIParser extends DefaultParser {
   constructor(config = {}) {
     super({ ...config, sourceType: 'API' });
   }
 
-  /**
-   * Fetches data from an API endpoint.
-   * @param {Object} sourceConfig - Configuration for the API endpoint.
-   * @param {string} sourceConfig.url - The URL of the API endpoint.
-   * @param {number} [sourceConfig.timeout=10000] - The request timeout in milliseconds.
-   * @returns {Promise<Array>} The API response data.
-   */
   async fetch(sourceConfig) {
     const { url, timeout = 10000 } = sourceConfig;
     logger.debug(`Fetching API endpoint: ${url}`);
@@ -44,13 +38,6 @@ class APIParser extends DefaultParser {
     }
   }
 
-  /**
-   * Parses API data into article objects.
-   * @param {Array} data - The raw API data.
-   * @param {Object} sourceConfig - Configuration for the API endpoint.
-   * @param {string} sourceConfig.name - The name of the API source.
-   * @returns {Array<Object>} An array of article objects.
-   */
   parse(data, sourceConfig) {
     logger.debug(`Parsing API data from ${sourceConfig.url}`);
     const articles = data
@@ -62,7 +49,13 @@ class APIParser extends DefaultParser {
 
         const domain = this.extractDomain(item.link);
         const publishedAt = this.parseDate(item.published);
-        const image = item.image && item.image.url ? this.createImage(item.image.url, item.image.width, item.image.height) : null;
+        const image = item.image && item.image.url
+          ? this.createImage(item.image.url, item.image.width, item.image.height)
+          : {
+              filename_disk: 'https://via.placeholder.com/150',
+              width: 150,
+              height: 150,
+            };
 
         return {
           link: item.link,
@@ -72,7 +65,7 @@ class APIParser extends DefaultParser {
           publishedAt,
           description: item.summary || '',
           image,
-          tags: ['API', 'coffee'],
+          // Remove default tags
         };
       })
       .filter(item => item !== null);

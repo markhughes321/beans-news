@@ -39,7 +39,7 @@ class DailyCoffeeNewsParser extends DefaultParser {
       /Welcome to DCN’s Weekly Coffee News!.*?latest coffee industry news\.?/i,
       /Also, check out the latest career opportunities at CoffeeIndustryJobs\.com\.?/i,
       /Subscribe here for all the latest coffee industry news\.?/i,
-      /Welcome to Design Details, an ongoing editorial feature in Daily Coffee News.*?branding\.?/i, // Added for articles like "Design Details: The Subjective Shape of Flavor with WeBe Coffee"
+      /Welcome to Design Details, an ongoing editorial feature in Daily Coffee News.*?branding\.?/i,
     ];
 
     return feedData.items.map(item => {
@@ -60,7 +60,6 @@ class DailyCoffeeNewsParser extends DefaultParser {
       if (contentSources.length === 0) {
         logger.warn(`No content fields (description, content:encoded, content) found for ${item.link}`);
       } else {
-        // Use the first available content source for description and image extraction
         const content = contentSources[0];
         descriptionRaw = content;
         logger.debug(`Parsing content for ${item.link}: ${content}`);
@@ -74,7 +73,6 @@ class DailyCoffeeNewsParser extends DefaultParser {
           logger.debug(`Extracted image for ${item.link}: url=${imageUrl}, width=${imageWidth}, height=${imageHeight}`);
         } else {
           logger.warn(`No <img> tag found in content for ${item.link}`);
-          // Fallback: Use regex to extract image URL
           const imgMatch = content.match(/<img[^>]+src=["'](.*?)["']/i);
           if (imgMatch && imgMatch[1]) {
             imageUrl = imgMatch[1];
@@ -90,25 +88,16 @@ class DailyCoffeeNewsParser extends DefaultParser {
         }
       }
 
-      const image = this.createImage(imageUrl, imageWidth, imageHeight);
-      if (!image) {
-        logger.warn(`No image found for Daily Coffee News article: ${item.link || 'unknown'}`);
-      } else {
-        logger.debug(`Created image object for ${item.link}: ${JSON.stringify(image)}`);
-      }
+      const image = this.createImage(imageUrl, imageWidth, imageHeight) || {
+        filename_disk: 'https://via.placeholder.com/150', // Default placeholder image
+        width: 150,
+        height: 150,
+      };
 
       const publishedAt = this.parseDate(item.isoDate || item.pubDate);
 
-      // Clean the description using the method from DefaultParser
       const description = this.cleanDescription(descriptionRaw, boilerplatePatterns);
       logger.debug(`Cleaned description for ${item.link}: ${description}`);
-
-      let tags = ['RSS', 'coffee', 'daily coffee news'];
-      if (item.category) {
-        const categories = Array.isArray(item.category) ? item.category : [item.category];
-        const categoryTags = categories.map(cat => typeof cat === 'string' ? cat.toLowerCase() : '').filter(Boolean);
-        tags = [...tags, ...categoryTags];
-      }
 
       return {
         link: item.link,
@@ -118,7 +107,7 @@ class DailyCoffeeNewsParser extends DefaultParser {
         publishedAt,
         description,
         image,
-        tags,
+        // Remove default category and tags
       };
     });
   }

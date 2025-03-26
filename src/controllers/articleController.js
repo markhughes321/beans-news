@@ -1,17 +1,18 @@
-// File: ./src/controllers/articleController.js
 const Article = require('../models/Article');
 const logger = require('../config/logger');
+const DefaultParser = require('../parsers/defaultParser');
 
-/**
- * Fetches all articles with pagination and optional filtering.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- */
+const parser = new DefaultParser();
+
 exports.getAllArticles = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const sentToShopify = req.query.sentToShopify; // New query parameter
+    const sentToShopify = req.query.sentToShopify;
+    const metaStatus = req.query.metaStatus;
+    const category = req.query.category;
+    const geotag = req.query.geotag;
+    const tag = req.query.tag;
 
     if (page < 1 || limit < 1) {
       return res.status(400).json({ error: 'Page and limit must be positive integers' });
@@ -21,16 +22,27 @@ exports.getAllArticles = async (req, res) => {
       return res.status(400).json({ error: 'Limit cannot exceed 100' });
     }
 
-    // Build the query
     let query = {};
     if (sentToShopify === 'true') {
       query.sentToShopify = true;
     } else if (sentToShopify === 'false') {
-      query.sentToShopify = { $ne: true }; // Includes both false and undefined
+      query.sentToShopify = { $ne: true };
+    }
+    if (metaStatus) {
+      query.metaStatus = metaStatus;
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (geotag) {
+      query.geotag = geotag;
+    }
+    if (tag) {
+      query.tags = tag;
     }
 
     const articles = await Article.find(query)
-      .select('title link source publishedAt description domain image tags createdAt updatedAt sentToShopify')
+      .select('title link source publishedAt description description_improved domain image tags category geotag createdAt updatedAt sentToShopify metaStatus')
       .sort({ publishedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -42,14 +54,18 @@ exports.getAllArticles = async (req, res) => {
       publishDate: article.publishedAt,
       title: article.title,
       description: article.description,
+      description_improved: article.description_improved,
       url: article.link,
       attribution: article.source,
       domain: article.domain,
       image: article.image || null,
-      tags: article.tags,
+      tags: article.tags ? article.tags.map(tag => parser.toTitleCase(tag)) : [],
+      category: parser.toTitleCase(article.category || 'Culture'),
+      geotag: article.geotag ? parser.toTitleCase(article.geotag) : null,
       date_created: article.createdAt,
       date_updated: article.updatedAt,
       sentToShopify: article.sentToShopify || false,
+      metaStatus: article.metaStatus || 'pending',
     }));
 
     res.json({
@@ -66,15 +82,10 @@ exports.getAllArticles = async (req, res) => {
   }
 };
 
-/**
- * Fetches a single article by ID.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- */
 exports.getArticleById = async (req, res) => {
   try {
     const article = await Article.findById(req.params.id)
-      .select('title link source publishedAt description domain image tags createdAt updatedAt sentToShopify')
+      .select('title link source publishedAt description description_improved domain image tags category geotag createdAt updatedAt sentToShopify metaStatus')
       .lean();
     if (!article) return res.status(404).json({ error: 'Article not found' });
 
@@ -83,14 +94,18 @@ exports.getArticleById = async (req, res) => {
       publishDate: article.publishedAt,
       title: article.title,
       description: article.description,
+      description_improved: article.description_improved,
       url: article.link,
       attribution: article.source,
       domain: article.domain,
       image: article.image || null,
-      tags: article.tags,
+      tags: article.tags ? article.tags.map(tag => parser.toTitleCase(tag)) : [],
+      category: parser.toTitleCase(article.category || 'Culture'),
+      geotag: article.geotag ? parser.toTitleCase(article.geotag) : null,
       date_created: article.createdAt,
       date_updated: article.updatedAt,
       sentToShopify: article.sentToShopify || false,
+      metaStatus: article.metaStatus || 'pending',
     };
 
     res.json({
@@ -104,11 +119,6 @@ exports.getArticleById = async (req, res) => {
   }
 };
 
-/**
- * Drops all articles from the database.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- */
 exports.dropAllArticles = async (req, res) => {
   try {
     await Article.deleteMany({});

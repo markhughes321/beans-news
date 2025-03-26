@@ -14,7 +14,7 @@ const serviceMap = {
  * @param {Object} req - Express request object.
  * @param {Object} res - Express response object.
  */
-exports.triggerService = async (req, res) => {
+const triggerService = async (req, res) => {
   const { service } = req.params;
   const fn = serviceMap[service.toLowerCase()];
 
@@ -32,4 +32,4 @@ exports.triggerService = async (req, res) => {
   }
 };
 
-module.exports = exports;
+module.exports = { triggerService };

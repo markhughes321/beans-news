@@ -15,9 +15,16 @@ class ScaParser extends RssParser {
     ];
 
     const parsedItems = super.parse(feedData, sourceConfig, boilerplatePatterns);
+
+    // Ensure every item has an image
     return parsedItems.map(item => ({
       ...item,
-      tags: [...(item.tags || []), 'SCA'],
+      image: item.image || {
+        filename_disk: 'https://via.placeholder.com/150', // Default placeholder image
+        width: 150,
+        height: 150,
+      },
+      // Remove default category and tags
     }));
   }
 }

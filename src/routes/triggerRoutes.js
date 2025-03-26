@@ -1,4 +1,3 @@
-// File: ./src/routes/triggerRoutes.js
 const express = require('express');
 const router = express.Router();
 const { triggerService } = require('../controllers/triggerController');
@@ -7,12 +6,12 @@ const { fetchRssFeeds } = require('../services/rssService');
 const { scrapeWebsites } = require('../services/scrapingService');
 const { fetchFromExternalAPIs } = require('../services/apiService');
 const { sendArticlesToShopify } = require('../services/shopifyService');
+const { batchAnalyzeArticles } = require('../services/chatGPTService');
+const { validateFinalArticle } = require('../services/validation');
 const { rssFeeds, scrapeTargets, apiEndpoints } = require('../config/feedsConfig');
 const logger = require('../config/logger');
+const mongoose = require('mongoose'); // Import mongoose to handle ObjectId
 
-/**
- * Manually triggers sending articles to Shopify.
- */
 router.get('/shopify-sync', async (req, res) => {
   try {
     logger.info('Manually triggering Shopify sync');
@@ -24,12 +23,8 @@ router.get('/shopify-sync', async (req, res) => {
   }
 });
 
-// Generic route for triggering services (rss, scraping, api)
 router.get('/:service', triggerService);
 
-/**
- * Resets the database and triggers a fresh scrape of all enabled sources.
- */
 router.post('/reset-and-scrape', async (req, res) => {
   try {
     logger.info('Dropping all articles from the database');
@@ -83,6 +78,105 @@ router.post('/reset-and-scrape', async (req, res) => {
   } catch (error) {
     logger.error(`Error during reset and scrape: ${error.message}`);
     res.status(500).json({ error: 'Failed to reset and scrape', details: error.message });
+  }
+});
+
+router.post('/reprocess-failed', async (req, res) => {
+  try {
+    logger.info('Triggering reprocessing of failed ChatGPT articles');
+
+    const failedArticles = await Article.find({ metaStatus: 'failed' })
+      .select('title link source publishedAt description description_improved domain image tags category geotag _id')
+      .lean();
+
+    if (failedArticles.length === 0) {
+      logger.info('No failed articles to reprocess');
+      return res.status(200).json({ message: 'No failed articles to reprocess' });
+    }
+
+    logger.info(`Found ${failedArticles.length} articles with metaStatus 'failed' to reprocess`);
+
+    await Article.updateMany(
+      { metaStatus: 'failed' },
+      { metaStatus: 'pending' }
+    );
+    logger.info(`Reset metaStatus to 'pending' for ${failedArticles.length} articles`);
+
+    const articlesToReprocess = failedArticles.map(article => ({
+      ...article,
+      _id: article._id,
+    }));
+
+    const chatGPTResults = await batchAnalyzeArticles(articlesToReprocess);
+
+    const chatGPTResultsMap = new Map(chatGPTResults.map(result => [result.id, result]));
+    const updatedArticles = articlesToReprocess.map(article => {
+      const chatGPTResult = chatGPTResultsMap.get(article._id.toString());
+      if (chatGPTResult) {
+        return {
+          ...article,
+          category: chatGPTResult.category,
+          geotag: chatGPTResult.geotag,
+          tags: chatGPTResult.tags || article.tags,
+          description_improved: chatGPTResult.description_improved,
+          originalId: article._id, // Preserve the original ObjectId
+        };
+      }
+      return {
+        ...article,
+        originalId: article._id, // Preserve the original ObjectId even if no ChatGPT result
+      };
+    });
+
+    const validatedArticles = updatedArticles
+      .map(article => {
+        // Ensure _id is a string for validation, but preserve originalId
+        const articleToValidate = {
+          ...article,
+          _id: article._id.toString(), // Convert _id to string for Joi validation
+        };
+        const validationResult = validateFinalArticle(articleToValidate, 'REPROCESS');
+        if (!validationResult.isValid) {
+          logger.warn(`Skipping invalid article after reprocessing (link: ${article.link}): ${JSON.stringify(validationResult.errors)}`);
+          return null;
+        }
+        return {
+          ...validationResult.article,
+          originalId: article.originalId, // Carry forward the original ObjectId
+        };
+      })
+      .filter(article => article !== null);
+
+    if (validatedArticles.length === 0) {
+      logger.info('No valid articles to save after reprocessing');
+      return res.status(200).json({ message: 'No valid articles to save after reprocessing' });
+    }
+
+    const result = await Article.bulkWrite(validatedArticles.map(article => ({
+      updateOne: {
+        filter: { _id: article.originalId }, // Use the original ObjectId for the filter
+        update: {
+          $set: {
+            category: article.category,
+            geotag: article.geotag,
+            tags: article.tags,
+            description_improved: article.description_improved,
+          },
+        },
+      },
+    })));
+
+    logger.info(`Reprocessed articles: matched=${result.matchedCount}, modified=${result.modifiedCount}`);
+
+    res.status(200).json({
+      message: 'Reprocessing of failed articles completed',
+      processed: validatedArticles.length,
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+    });
+  } catch (error) {
+    logger.error(`Error reprocessing failed articles: ${error.message}`);
+    res.status(500).json({ error: 'Failed to reprocess articles', details: error.message });
   }
 });
 

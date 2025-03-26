@@ -21,9 +21,6 @@
         .header {
             max-width: 1200px;
             margin: 0 auto 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             background-color: white;
             padding: 15px 20px;
             border-radius: 8px;
@@ -34,12 +31,64 @@
             font-size: 24px;
             font-weight: 600;
             color: #1a1a1a;
+            margin-bottom: 15px;
         }
 
         .header-controls {
             display: flex;
-            align-items: center;
-            gap: 20px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .filter-tab {
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a4a4a;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s, border-bottom 0.2s;
+        }
+
+        .filter-tab:hover {
+            color: #1a1a1a;
+        }
+
+        .filter-tab.active {
+            color: #1a1a1a;
+            border-bottom: 2px solid #1a1a1a;
+        }
+
+        .filter-tab.category {
+            color: #007bff;
+        }
+
+        .filter-tab.category.active {
+            border-bottom: 2px solid #007bff;
+        }
+
+        .filter-tab.geotag {
+            color: #28a745;
+        }
+
+        .filter-tab.geotag.active {
+            border-bottom: 2px solid #28a745;
+        }
+
+        .filter-tab.tag {
+            color: #ff4d4f;
+        }
+
+        .filter-tab.tag.active {
+            border-bottom: 2px solid #ff4d4f;
         }
 
         .filter-container {
@@ -93,10 +142,9 @@
         .article-card {
             background-color: white;
             border-radius: 2px;
-            border: 3px;
             display: flex;
             flex-direction: column;
-            height: 100%; /* Ensure cards stretch to the same height */
+            height: 100%;
         }
 
         .article-image {
@@ -122,30 +170,36 @@
             line-height: 1.4;
         }
 
-        .article-tags {
+        .article-meta-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
             margin-bottom: 10px;
         }
 
-        .tag {
+        .pill {
             display: inline-block;
-            background-color: #e5e7eb;
-            border: 1px #4a4a4a;
             padding: 4px 10px;
             border-radius: 12px;
             font-size: 12px;
-            margin-right: 6px;
-            margin-bottom: 6px;
             font-weight: 500;
+            background-color: white;
+            cursor: pointer;
         }
 
-        .tag.top {
-            background-color: #007bff;
-            color: white;
+        .pill.category {
+            border: 1px solid #007bff;
+            color: #007bff;
         }
 
-        .tag.author {
-            background-color: #ff4d4f;
-            color: white;
+        .pill.geotag {
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+
+        .pill.tag {
+            border: 1px solid #ff4d4f;
+            color: #ff4d4f;
         }
 
         .article-description {
@@ -154,7 +208,7 @@
             line-height: 1.5;
             margin-bottom: 12px;
             display: -webkit-box;
-            -webkit-line-clamp: 4; /* Limit to 4 lines */
+            -webkit-line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -166,7 +220,7 @@
             font-size: 8px;
             color: #9ca3af;
             gap: 5px;
-            margin-top: auto; /* Push meta to the bottom of the card */
+            margin-top: auto;
         }
 
         .article-source {
@@ -230,8 +284,6 @@
 
         @media (max-width: 600px) {
             .header {
-                flex-direction: column;
-                gap: 15px;
                 padding: 15px;
             }
 
@@ -239,10 +291,13 @@
                 font-size: 20px;
             }
 
-            .header-controls {
-                flex-direction: column;
-                gap: 10px;
-                width: 100%;
+            .filter-tabs {
+                gap: 8px;
+            }
+
+            .filter-tab {
+                font-size: 12px;
+                padding: 4px 8px;
             }
 
             .filter-container {
@@ -266,8 +321,8 @@
             }
 
             .article-description {
-                font-size: 13px; /* Slightly smaller font for mobile */
-                -webkit-line-clamp: 3; /* Limit to 3 lines on mobile */
+                font-size: 13px;
+                -webkit-line-clamp: 3;
             }
 
             .pagination button {
@@ -286,6 +341,7 @@
     <div class="header">
         <h1>Beans News</h1>
         <div class="header-controls">
+            <div class="filter-tabs" id="filterTabs"></div>
             <div class="filter-container">
                 <label for="shopifyFilter">Filter by Shopify Status:</label>
                 <select id="shopifyFilter" onchange="handleFilterChange()">
@@ -307,7 +363,14 @@
         let currentPage = 1;
         let totalPages = 1;
         let totalArticles = 0;
-        let shopifyFilter = 'all'; // Default filter: show all articles
+        let shopifyFilter = 'all';
+        let categoryFilter = '';
+        let geotagFilter = '';
+        let tagFilter = '';
+
+        const predefinedCategories = [
+            'Sustainability', 'Design', 'Origin', 'Culture', 'Market', 'Innovation', 'People', 'Competition'
+        ];
 
         // Function to format the date in the desired format (e.g., "22 Mar, 2025 @ 23:03")
         function formatDate(dateString) {
@@ -326,30 +389,26 @@
                 return 'No description available.';
             }
 
-            const maxChars = 300; // Maximum character limit
+            const maxChars = 300;
             let truncated = description.trim();
 
-            // Case 1: Description is under 300 characters
             if (truncated.length <= maxChars) {
-                // Check if the description ends with a complete sentence (ends with '.', '!', or '?')
                 if (!/[.!?]$/.test(truncated)) {
-                    return truncated + '...'; // Append ... if it's an unfinished sentence
+                    return truncated + '...';
                 }
-                return truncated; // Return as-is if it ends with punctuation
+                return truncated;
             }
 
-            // Case 2: Description is over 300 characters, truncate at the nearest full stop
             const sentences = truncated.split(/(?<=[.!?])\s+/);
             let currentLength = 0;
             let selectedSentences = [];
 
             for (const sentence of sentences) {
-                // Only include sentences that end with punctuation
                 if (!/[.!?]$/.test(sentence)) {
-                    break; // Stop if we encounter an incomplete sentence
+                    break;
                 }
 
-                const newLength = currentLength + sentence.length + (selectedSentences.length > 0 ? 1 : 0); // +1 for space between sentences
+                const newLength = currentLength + sentence.length + (selectedSentences.length > 0 ? 1 : 0);
                 if (newLength > maxChars) {
                     break;
                 }
@@ -362,7 +421,6 @@
                 return selectedSentences.join(' ').trim();
             }
 
-            // Fallback: If no complete sentences fit within maxChars, truncate at maxChars and append ...
             const lastSpaceIndex = truncated.substring(0, maxChars).lastIndexOf(' ');
             if (lastSpaceIndex !== -1) {
                 return truncated.substring(0, lastSpaceIndex) + '...';
@@ -373,8 +431,103 @@
         // Function to handle filter change
         function handleFilterChange() {
             shopifyFilter = document.getElementById('shopifyFilter').value;
-            currentPage = 1; // Reset to first page when filter changes
+            currentPage = 1;
             fetchArticles();
+            updateFilterTabs();
+        }
+
+        // Function to apply filter by clicking on a pill or tab
+        function applyFilter(type, value) {
+            if (type === 'category') {
+                categoryFilter = (categoryFilter === value) ? '' : value;
+                geotagFilter = '';
+                tagFilter = '';
+            } else if (type === 'geotag') {
+                geotagFilter = (geotagFilter === value) ? '' : value;
+                categoryFilter = '';
+                tagFilter = '';
+            } else if (type === 'tag') {
+                tagFilter = (tagFilter === value) ? '' : value;
+                categoryFilter = '';
+                geotagFilter = '';
+            }
+            currentPage = 1;
+            fetchArticles();
+            updateFilterTabs();
+        }
+
+        // Function to populate filter tabs
+        async function populateFilterTabs() {
+            try {
+                const response = await fetch('http://192.168.0.44:3000/api/articles?page=1&limit=1000');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch articles for filter options');
+                }
+
+                const data = await response.json();
+                const articles = data.data.Beans_News_Articles;
+
+                // Collect unique geotags and tags
+                const geotags = new Set();
+                const tags = new Set();
+                articles.forEach(article => {
+                    if (article.geotag) {
+                        geotags.add(article.geotag);
+                    }
+                    if (article.tags && Array.isArray(article.tags)) {
+                        article.tags.forEach(tag => tags.add(tag));
+                    }
+                });
+
+                const filterTabs = document.getElementById('filterTabs');
+                filterTabs.innerHTML = '';
+
+                // Add category tabs
+                predefinedCategories.forEach(category => {
+                    const tab = document.createElement('button');
+                    tab.className = `filter-tab category`;
+                    tab.textContent = category;
+                    tab.onclick = () => applyFilter('category', category);
+                    filterTabs.appendChild(tab);
+                });
+
+                // Add geotag tabs
+                geotags.forEach(geotag => {
+                    const tab = document.createElement('button');
+                    tab.className = `filter-tab geotag`;
+                    tab.textContent = geotag;
+                    tab.onclick = () => applyFilter('geotag', geotag);
+                    filterTabs.appendChild(tab);
+                });
+
+                // Add tag tabs
+                tags.forEach(tag => {
+                    const tab = document.createElement('button');
+                    tab.className = `filter-tab tag`;
+                    tab.textContent = tag;
+                    tab.onclick = () => applyFilter('tag', tag);
+                    filterTabs.appendChild(tab);
+                });
+
+                updateFilterTabs();
+            } catch (error) {
+                console.error('Error populating filter tabs:', error);
+            }
+        }
+
+        // Function to update active state of filter tabs
+        function updateFilterTabs() {
+            const tabs = document.querySelectorAll('.filter-tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.classList.contains('category') && tab.textContent === categoryFilter) {
+                    tab.classList.add('active');
+                } else if (tab.classList.contains('geotag') && tab.textContent === geotagFilter) {
+                    tab.classList.add('active');
+                } else if (tab.classList.contains('tag') && tab.textContent === tagFilter) {
+                    tab.classList.add('active');
+                }
+            });
         }
 
         // Function to render articles
@@ -392,14 +545,12 @@
                 return;
             }
 
-            // Update the current count
             currentCount.textContent = articles.length;
 
             articles.forEach(article => {
                 const card = document.createElement('div');
                 card.className = 'article-card';
 
-                // Content container
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'article-content';
 
@@ -409,7 +560,7 @@
                 title.textContent = article.title;
                 contentDiv.appendChild(title);
 
-                // Image (or placeholder if no image)
+                // Image
                 const imageDiv = document.createElement('div');
                 if (article.image && article.image.filename_disk) {
                     const img = document.createElement('img');
@@ -423,21 +574,43 @@
                 }
                 contentDiv.appendChild(imageDiv);
 
-                // Tags
-                const tagsDiv = document.createElement('div');
-                tagsDiv.className = 'article-tags';
-                article.tags.forEach(tag => {
-                    const tagSpan = document.createElement('span');
-                    tagSpan.className = `tag ${tag.toLowerCase() === 'top' ? 'top' : ''}`;
-                    tagSpan.textContent = tag;
-                    tagsDiv.appendChild(tagSpan);
-                });
-                contentDiv.appendChild(tagsDiv);
+                // Meta Container (Category, Geotag, Tags)
+                const metaContainer = document.createElement('div');
+                metaContainer.className = 'article-meta-container';
 
-                // Description
+                // Category
+                const categorySpan = document.createElement('span');
+                categorySpan.className = 'pill category';
+                categorySpan.textContent = article.category || 'Uncategorized';
+                categorySpan.onclick = () => applyFilter('category', article.category);
+                metaContainer.appendChild(categorySpan);
+
+                // Geotag
+                if (article.geotag) {
+                    const geotagSpan = document.createElement('span');
+                    geotagSpan.className = 'pill geotag';
+                    geotagSpan.textContent = article.geotag;
+                    geotagSpan.onclick = () => applyFilter('geotag', article.geotag);
+                    metaContainer.appendChild(geotagSpan);
+                }
+
+                // Tags
+                if (article.tags && article.tags.length > 0) {
+                    article.tags.forEach(tag => {
+                        const tagSpan = document.createElement('span');
+                        tagSpan.className = 'pill tag';
+                        tagSpan.textContent = tag;
+                        tagSpan.onclick = () => applyFilter('tag', tag);
+                        metaContainer.appendChild(tagSpan);
+                    });
+                }
+
+                contentDiv.appendChild(metaContainer);
+
+                // Description (use improved description if available)
                 const description = document.createElement('p');
                 description.className = 'article-description';
-                description.textContent = truncateDescription(article.description);
+                description.textContent = truncateDescription(article.description_improved || article.description);
                 contentDiv.appendChild(description);
 
                 // Meta (Source and Timestamp)
@@ -505,14 +678,21 @@
             errorMessage.style.display = 'none';
 
             try {
-                // Build the query parameters based on the filter
                 let url = `http://192.168.0.44:3000/api/articles?page=${currentPage}`;
                 if (shopifyFilter !== 'all') {
                     const sentToShopify = shopifyFilter === 'sent' ? 'true' : 'false';
                     url += `&sentToShopify=${sentToShopify}`;
                 }
+                if (categoryFilter) {
+                    url += `&category=${encodeURIComponent(categoryFilter)}`;
+                }
+                if (geotagFilter) {
+                    url += `&geotag=${encodeURIComponent(geotagFilter)}`;
+                }
+                if (tagFilter) {
+                    url += `&tag=${encodeURIComponent(tagFilter)}`;
+                }
 
-                // Fetch articles with the current page and filter
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Failed to fetch articles');
@@ -524,7 +704,6 @@
                 currentPage = data.page || 1;
                 totalArticles = data.total || 0;
 
-                // Update the total count
                 totalCount.textContent = totalArticles;
 
                 renderArticles(articles);
@@ -537,8 +716,11 @@
             }
         }
 
-        // Fetch articles when the page loads
-        window.onload = fetchArticles;
+        // Initialize the page
+        window.onload = () => {
+            populateFilterTabs();
+            fetchArticles();
+        };
     </script>
 </body>
 </html>

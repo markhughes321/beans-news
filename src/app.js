@@ -6,7 +6,6 @@ const logger = require('./config/logger');
 
 const app = express();
 
-// Configure CORS
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -15,8 +14,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
-app.use('/api/articles', articleRoutes);
-app.use('/api/trigger', triggerRoutes);
+
+// Initialize routes
+const initializeRoutes = () => {
+  app.use('/api/articles', articleRoutes);
+  app.use('/api/trigger', triggerRoutes);
+};
+
+initializeRoutes();
 
 app.use((err, req, res, next) => {
   logger.error(`Unhandled error: ${err.message}`);
