@@ -1,0 +1,11 @@
+{
+  "sources": [
+    {
+      "name": "dailyCoffeeNews",
+      "type": "rss",
+      "url": "https://dailycoffeenews.com/feed/",
+      "cronSchedule": "0 6 * * *"
+    }
+  ],
+  "publishShopifySchedule": "0 7 * * *"
+}

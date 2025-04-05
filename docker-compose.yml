@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    container_name: beansnews_app
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=${PORT}
+      - MONGO_URI=mongodb://mongo:27017/beansnews
+      - SHOPIFY_ACCESS_TOKEN=${SHOPIFY_ACCESS_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: sh -c "ls -la /app/.env && env && node /app/server/index.js"
+    depends_on:
+      - mongo
+  mongo:
+    image: mongo:latest
+    container_name: beansnews_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
