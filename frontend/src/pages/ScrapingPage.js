@@ -1,51 +1,61 @@
-import React, { useState } from "react";
-import { scrapeSource, publishShopify } from "../services/api";
+import React, { useState } from 'react';
+import { Box, Typography, TextField, Button, Alert } from '@mui/material';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useScraper } from '../hooks/useScraper';
 
-function ScrapingPage() {
-  const [source, setSource] = useState("");
-  const [scrapeMessage, setScrapeMessage] = useState("");
-  const [publishMessage, setPublishMessage] = useState("");
-
-  const handleScrape = async () => {
-    if (!source) {
-      setScrapeMessage("Please specify a source name.");
-      return;
-    }
-    const result = await scrapeSource(source);
-    setScrapeMessage(`Scrape Complete: Found ${result.newArticles} new articles for source '${source}'.`);
-  };
-
-  const handlePublish = async () => {
-    const result = await publishShopify();
-    setPublishMessage(result.message);
-  };
+const ScrapingPage = () => {
+  const [source, setSource] = useState('');
+  const { scrapeMessage, publishMessage, loading, error, handleScrape, handlePublish } =
+    useScraper();
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>Scraping & Publishing</h1>
-
-      <div style={{ marginTop: "1rem" }}>
-        <label>Source Name:</label>
-        <input
-          type="text"
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Scraping & Publishing
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Box sx={{ mt: 2 }}>
+        <TextField
+          label="Source Name"
           value={source}
           onChange={(e) => setSource(e.target.value)}
-          style={{ marginLeft: "0.5rem" }}
+          sx={{ mr: 2 }}
         />
-        <button onClick={handleScrape} style={{ marginLeft: "1rem" }}>
+        <Button
+          variant="contained"
+          onClick={() => handleScrape(source)}
+          disabled={loading}
+        >
           Scrape
-        </button>
-      </div>
-      {scrapeMessage && <p>{scrapeMessage}</p>}
-
-      <hr />
-
-      <div style={{ marginTop: "1rem" }}>
-        <button onClick={handlePublish}>Publish to Shopify</button>
-        {publishMessage && <p>{publishMessage}</p>}
-      </div>
-    </div>
+        </Button>
+      </Box>
+      {scrapeMessage && (
+        <Typography sx={{ mt: 1, color: 'text.secondary' }}>
+          {scrapeMessage}
+        </Typography>
+      )}
+      <Box sx={{ mt: 3 }}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handlePublish}
+          disabled={loading}
+        >
+          Publish to Shopify
+        </Button>
+      </Box>
+      {publishMessage && (
+        <Typography sx={{ mt: 1, color: 'text.secondary' }}>
+          {publishMessage}
+        </Typography>
+      )}
+      {loading && <LoadingSpinner />}
+    </Box>
   );
-}
+};
 
 export default ScrapingPage;

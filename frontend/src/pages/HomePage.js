@@ -1,57 +1,53 @@
-// frontend/src/pages/HomePage.js
-import React, { useEffect, useState } from "react";
-import ArticleCard from "../components/ArticleCard";
-import TagFilterBar from "../components/TagFilterBar";
-import "./HomePage.css"; // local styling for layout
+import React, { useState } from 'react';
+import { Box, Typography } from '@mui/material';
+import ArticleCard from '../components/common/ArticleCard';
+import CategoryBar from '../components/common/CategoryBar';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useArticles } from '../hooks/useArticles';
+import { CATEGORIES } from '../utils/constants';
 
-function HomePage() {
-  const [articles, setArticles] = useState([]);
-  const [selectedTag, setSelectedTag] = useState(null);
+const HomePage = () => {
+  const { articles, loading, error } = useArticles();
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const topCategories = ["Top", "Exclusives", "Data", "People", "Shows", "Market"];
-  const sampleTags = ["Milan", "Giuseppe Penone", "Yoko Ono", "Ruth Asawa", "Damien Hirst", "Rose Wylie", "Mark Leckey"];
-
-  useEffect(() => {
-    // TODO: fetch articles from your API or pass them as props
-    fetch("/api/articles") // or your actual endpoint
-      .then((res) => res.json())
-      .then((data) => {
-        setArticles(data);
-      })
-      .catch((error) => console.error("Failed to fetch articles:", error));
-  }, []);
-
-  // Example: filter by selectedTag if you want
-  const filteredArticles = selectedTag
-    ? articles.filter((a) => a.tags && a.tags.includes(selectedTag))
+  const filteredArticles = selectedCategory
+    ? articles.filter((a) => a.category === selectedCategory)
     : articles;
 
-  const handleSelectTag = (tag) => {
-    setSelectedTag(tag === selectedTag ? null : tag); // toggle same tag off
+  const handleSelectCategory = (category) => {
+    setSelectedCategory(category === selectedCategory ? null : category);
   };
 
+  if (loading) return <LoadingSpinner />;
+  if (error) return <Typography color="error">{error}</Typography>;
+
   return (
-    <div className="homepage-container">
-      {/* Top Nav */}
-      <nav className="top-nav">
-        {topCategories.map((cat) => (
-          <div key={cat} className="top-nav-item">
-            {cat}
-          </div>
-        ))}
-      </nav>
-
-      {/* Tag Filter Horizontal Bar */}
-      <TagFilterBar tags={sampleTags} onSelectTag={handleSelectTag} />
-
-      {/* Grid of Articles */}
-      <div className="articles-grid">
-        {filteredArticles.map((article) => (
-          <ArticleCard key={article.uuid} article={article} />
-        ))}
-      </div>
-    </div>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <CategoryBar
+        categories={CATEGORIES}
+        onSelectCategory={handleSelectCategory}
+        selectedCategory={selectedCategory}
+      />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+          gap: 3,
+          py: 3,
+        }}
+      >
+        {filteredArticles.length > 0 ? (
+          filteredArticles.map((article) => (
+            <ArticleCard key={article.uuid} article={article} />
+          ))
+        ) : (
+          <Typography sx={{ textAlign: 'center', color: 'text.secondary', mt: 3 }}>
+            No articles found for this category.
+          </Typography>
+        )}
+      </Box>
+    </Box>
   );
-}
+};
 
 export default HomePage;

@@ -1,88 +1,283 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getArticle, updateArticle } from "../services/api";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  FormControlLabel,
+  Checkbox,
+  OutlinedInput,
+} from '@mui/material';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useArticles } from '../hooks/useArticles';
+import { ARTICLE_CATEGORIES } from '../utils/constants';
+import { formatDate } from '../utils/formatDate';
 
-function ArticleEdit() {
+const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
+  const { fetchArticleById, updateArticleById, loading, error } = useArticles();
   const [article, setArticle] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // Local loading state to prevent flicker
 
   useEffect(() => {
-    (async function fetchArticle() {
-      const data = await getArticle(uuid);
-      setArticle(data);
-    })();
-  }, [uuid]);
+    const loadArticle = async () => {
+      setIsLoading(true);
+      const data = await fetchArticleById(uuid);
+      if (data) {
+        setArticle(data);
+      }
+      setIsLoading(false);
+    };
+    loadArticle();
+  }, [uuid, fetchArticleById]); // Dependencies are now stable
 
   const handleChange = (e) => {
-    setArticle({
-      ...article,
-      [e.target.name]: e.target.value
-    });
+    const { name, value, type, checked } = e.target;
+    setArticle((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleTagsChange = (e) => {
+    const tags = e.target.value;
+    setArticle((prev) => ({
+      ...prev,
+      tags: typeof tags === 'string' ? tags.split(',').map((tag) => tag.trim()) : tags,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await updateArticle(uuid, article);
-    navigate("/");
+    await updateArticleById(uuid, article);
+    navigate('/');
   };
 
-  if (!article) {
-    return <div style={{ padding: "1rem" }}>Loading...</div>;
+  if (isLoading || loading) return <LoadingSpinner />;
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">
+          {error}
+          <br />
+          UUID: {uuid}
+        </Typography>
+      </Box>
+    );
   }
+  if (!article) return <Typography>No article data available.</Typography>;
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h2>Edit Article</h2>
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", maxWidth: "600px" }}
-      >
-        <label>Title:</label>
-        <input
-          name="title"
-          value={article.title || ""}
-          onChange={handleChange}
-        />
+    <Box sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
+      <Typography variant="h4" gutterBottom>
+        Edit Article
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* UUID (Read-only) */}
+          <TextField
+            label="UUID"
+            name="uuid"
+            value={article.uuid || ''}
+            fullWidth
+            InputProps={{ readOnly: true }}
+            variant="outlined"
+          />
 
-        <label>Category:</label>
-        <select name="category" value={article.category || ""} onChange={handleChange}>
-          <option value="Sustainability">Sustainability</option>
-          <option value="Design">Design</option>
-          <option value="Origin">Origin</option>
-          <option value="Culture">Culture</option>
-          <option value="Market">Market</option>
-          <option value="Innovation">Innovation</option>
-          <option value="People">People</option>
-          <option value="Competition">Competition</option>
-        </select>
+          {/* Title */}
+          <TextField
+            label="Title"
+            name="title"
+            value={article.title || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            required
+          />
 
-        <label>Geotag:</label>
-        <input
-          name="geotag"
-          value={article.geotag || ""}
-          onChange={handleChange}
-        />
+          {/* Link */}
+          <TextField
+            label="Link"
+            name="link"
+            value={article.link || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            required
+          />
 
-        <label>Improved Description:</label>
-        <textarea
-          name="improvedDescription"
-          value={article.improvedDescription || ""}
-          onChange={handleChange}
-          rows="5"
-        />
+          {/* Source */}
+          <TextField
+            label="Source"
+            name="source"
+            value={article.source || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            required
+          />
 
-        <label>Image URL:</label>
-        <input
-          name="imageUrl"
-          value={article.imageUrl || ""}
-          onChange={handleChange}
-        />
+          {/* Domain */}
+          <TextField
+            label="Domain"
+            name="domain"
+            value={article.domain || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            required
+          />
 
-        <button type="submit" style={{ marginTop: "1rem" }}>Save</button>
+          {/* Published At */}
+          <TextField
+            label="Published At"
+            name="publishedAt"
+            value={article.publishedAt ? formatDate(article.publishedAt) : ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            type="datetime-local"
+            InputLabelProps={{ shrink: true }}
+          />
+
+          {/* Description */}
+          <TextField
+            label="Description"
+            name="description"
+            value={article.description || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+          />
+
+          {/* Improved Description */}
+          <TextField
+            label="Improved Description"
+            name="improvedDescription"
+            value={article.improvedDescription || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+          />
+
+          {/* Image URL */}
+          <TextField
+            label="Image URL"
+            name="imageUrl"
+            value={article.imageUrl || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+          />
+
+          {/* Image Width */}
+          <TextField
+            label="Image Width"
+            name="imageWidth"
+            value={article.imageWidth || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            type="number"
+          />
+
+          {/* Image Height */}
+          <TextField
+            label="Image Height"
+            name="imageHeight"
+            value={article.imageHeight || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            type="number"
+          />
+
+          {/* Category */}
+          <FormControl fullWidth variant="outlined">
+            <InputLabel>Category</InputLabel>
+            <Select
+              name="category"
+              value={article.category || ''}
+              onChange={handleChange}
+              label="Category"
+            >
+              {ARTICLE_CATEGORIES.map((cat) => (
+                <MenuItem key={cat} value={cat}>
+                  {cat}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Geotag */}
+          <TextField
+            label="Geotag"
+            name="geotag"
+            value={article.geotag || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+          />
+
+          {/* Tags */}
+          <FormControl fullWidth variant="outlined">
+            <InputLabel>Tags (comma-separated)</InputLabel>
+            <OutlinedInput
+              name="tags"
+              value={article.tags ? article.tags.join(', ') : ''}
+              onChange={handleTagsChange}
+              label="Tags (comma-separated)"
+            />
+          </FormControl>
+
+          {/* Sent to Shopify */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                name="sentToShopify"
+                checked={article.sentToShopify || false}
+                onChange={handleChange}
+              />
+            }
+            label="Sent to Shopify"
+          />
+
+          {/* Timestamps (Read-only) */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Created At"
+              value={article.createdAt ? formatDate(article.createdAt) : ''}
+              fullWidth
+              InputProps={{ readOnly: true }}
+              variant="outlined"
+            />
+            <TextField
+              label="Updated At"
+              value={article.updatedAt ? formatDate(article.updatedAt) : ''}
+              fullWidth
+              InputProps={{ readOnly: true }}
+              variant="outlined"
+            />
+          </Box>
+
+          {/* Submit Button */}
+          <Button type="submit" variant="contained" color="primary">
+            Save
+          </Button>
+        </Box>
       </form>
-    </div>
+    </Box>
   );
-}
+};
 
 export default ArticleEdit;

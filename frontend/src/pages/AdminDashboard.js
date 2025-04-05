@@ -1,30 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { getArticles, deleteArticle } from "../services/api";
-import ArticlesTable from "../components/ArticlesTable";
+import React from 'react';
+import { Typography, Box } from '@mui/material';
+import ArticlesTable from '../components/layout/ArticlesTable';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useArticles } from '../hooks/useArticles';
 
-function AdminDashboard() {
-  const [articles, setArticles] = useState([]);
+const AdminDashboard = () => {
+  const { articles, loading, error, deleteArticleById } = useArticles();
 
-  const fetchArticles = async () => {
-    const data = await getArticles();
-    setArticles(data);
-  };
-
-  useEffect(() => {
-    fetchArticles();
-  }, []);
-
-  const handleDelete = async (uuid) => {
-    await deleteArticle(uuid);
-    fetchArticles();
-  };
+  if (loading) return <LoadingSpinner />;
+  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>Admin Dashboard</h1>
-      <ArticlesTable articles={articles} onDelete={handleDelete} />
-    </div>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Admin Dashboard
+      </Typography>
+      <ArticlesTable articles={articles} onDelete={deleteArticleById} />
+    </Box>
   );
-}
+};
 
 export default AdminDashboard;
