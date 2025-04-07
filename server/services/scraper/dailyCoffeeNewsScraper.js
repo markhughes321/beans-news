@@ -4,7 +4,7 @@ const logger = require("../../config/logger");
 
 const parser = new Parser();
 
-async function scrapeDailyCoffeeNews() {
+async function scrape() {
   const feedUrl = "https://dailycoffeenews.com/feed/";
   logger.debug("Starting scrape of dailyCoffeeNews", { feedUrl });
 
@@ -44,4 +44,4 @@ async function scrapeDailyCoffeeNews() {
   }
 }
 
-module.exports = { scrapeDailyCoffeeNews };
+module.exports = { scrape };

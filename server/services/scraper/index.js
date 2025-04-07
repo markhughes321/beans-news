@@ -3,18 +3,53 @@ const path = require("path");
 const logger = require("../../config/logger");
 const Article = require("../../models/Article");
 const { processArticleAI } = require("../ai");
-const { scrapeDailyCoffeeNews } = require("./dailyCoffeeNewsScraper");
 
 async function scrapeSource(sourceConfig) {
-  const { name, type, url } = sourceConfig;
+  const { name, url, scraperFile } = sourceConfig;
   logger.info("Initiating scrape for source", { source: name });
 
-  let rawArticles = [];
-  if (name === "dailyCoffeeNews") {
-    rawArticles = await scrapeDailyCoffeeNews();
-  } else {
-    logger.warn(`No known scraper for source '${name}'`);
-    return 0;
+  // Validate scraperFile
+  if (!scraperFile) {
+    logger.error("No scraperFile specified in source config", { source: name });
+    throw new Error(`No scraperFile specified for source '${name}'`);
+  }
+
+  // Define the scraper file path relative to this file's location
+  const scraperPath = path.join(__dirname, `${scraperFile}.js`);
+
+  // Check if the scraper file exists
+  if (!fs.existsSync(scraperPath)) {
+    logger.error("Scraper file not found", { source: name, file: scraperPath });
+    throw new Error(`Scraper file '${scraperFile}.js' not found for source '${name}'`);
+  }
+
+  // Dynamically load the scraper
+  let scraperModule;
+  try {
+    scraperModule = require(scraperPath);
+  } catch (err) {
+    logger.error("Error loading scraper module", { source: name, file: scraperPath, error: err.message });
+    throw new Error(`Failed to load scraper '${scraperFile}.js' for source '${name}': ${err.message}`);
+  }
+
+  // Ensure the scraper exports a 'scrape' function
+  if (typeof scraperModule.scrape !== "function") {
+    logger.error("Scraper module does not export a 'scrape' function", { source: name, file: scraperPath });
+    throw new Error(`Scraper '${scraperFile}.js' must export a 'scrape' function`);
+  }
+
+  // Execute the scrape
+  let rawArticles;
+  try {
+    rawArticles = await scraperModule.scrape();
+  } catch (err) {
+    logger.error("Error executing scraper", { source: name, file: scraperPath, error: err.message });
+    throw err;
+  }
+
+  if (!Array.isArray(rawArticles)) {
+    logger.error("Scraper did not return an array", { source: name, file: scraperPath });
+    throw new Error(`Scraper '${scraperFile}.js' for source '${name}' must return an array of articles`);
   }
 
   logger.debug("Processing scraped articles", { count: rawArticles.length });

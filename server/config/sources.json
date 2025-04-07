@@ -4,7 +4,15 @@
       "name": "dailyCoffeeNews",
       "type": "rss",
       "url": "https://dailycoffeenews.com/feed/",
-      "cronSchedule": "0 6 * * *"
+      "cronSchedule": "0 6 * * *",
+      "scraperFile": "dailyCoffeeNewsScraper"
+    },
+    {
+      "name": "standart",
+      "type": "html",
+      "url": "https://standartmag.com/blogs/journal",
+      "cronSchedule": "0 6 * * *",
+      "scraperFile": "standartScraper"
     }
   ],
   "publishShopifySchedule": "0 7 * * *"
