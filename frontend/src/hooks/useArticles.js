@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getArticles, getArticle, updateArticle, deleteArticle } from '../services/api';
+import { getArticles, getArticle, updateArticle, deleteArticle, pushArticleToShopify } from '../services/api';
 
 export const useArticles = () => {
   const [articles, setArticles] = useState([]);
@@ -38,7 +38,7 @@ export const useArticles = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array since this function doesn't depend on any external state
+  }, []);
 
   const updateArticleById = async (uuid, data) => {
     setLoading(true);
@@ -72,6 +72,23 @@ export const useArticles = () => {
     }
   };
 
+  const pushToShopify = async (uuid) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await pushArticleToShopify(uuid);
+      await fetchArticles(); // Refresh the articles list to reflect updated sentToShopify status
+      return result;
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to push article to Shopify';
+      setError(errorMessage);
+      console.error('Error pushing article to Shopify:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchArticles();
   }, []);
@@ -84,5 +101,6 @@ export const useArticles = () => {
     fetchArticleById,
     updateArticleById,
     deleteArticleById,
+    pushToShopify,
   };
 };

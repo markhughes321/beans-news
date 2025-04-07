@@ -12,6 +12,7 @@ import {
   FormControlLabel,
   Checkbox,
   OutlinedInput,
+  Alert,
 } from '@mui/material';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useArticles } from '../hooks/useArticles';
@@ -21,9 +22,11 @@ import { formatDate } from '../utils/formatDate';
 const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
-  const { fetchArticleById, updateArticleById, loading, error } = useArticles();
+  const { fetchArticleById, updateArticleById, pushToShopify, loading, error } = useArticles();
   const [article, setArticle] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // Local loading state to prevent flicker
+  const [isLoading, setIsLoading] = useState(true);
+  const [shopifyMessage, setShopifyMessage] = useState('');
+  const [shopifyError, setShopifyError] = useState(null);
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -35,7 +38,7 @@ const ArticleEdit = () => {
       setIsLoading(false);
     };
     loadArticle();
-  }, [uuid, fetchArticleById]); // Dependencies are now stable
+  }, [uuid, fetchArticleById]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -56,7 +59,19 @@ const ArticleEdit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     await updateArticleById(uuid, article);
-    navigate('/');
+    setShopifyMessage('Article saved successfully. You can now push to Shopify.');
+  };
+
+  const handlePushToShopify = async () => {
+    setShopifyMessage('');
+    setShopifyError(null);
+    try {
+      const result = await pushToShopify(uuid);
+      setShopifyMessage(result.message);
+    } catch (err) {
+      setShopifyError('Failed to push article to Shopify');
+      console.error(err);
+    }
   };
 
   if (isLoading || loading) return <LoadingSpinner />;
@@ -78,9 +93,18 @@ const ArticleEdit = () => {
       <Typography variant="h4" gutterBottom>
         Edit Article
       </Typography>
+      {shopifyMessage && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {shopifyMessage}
+        </Alert>
+      )}
+      {shopifyError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {shopifyError}
+        </Alert>
+      )}
       <form onSubmit={handleSubmit}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* UUID (Read-only) */}
           <TextField
             label="UUID"
             name="uuid"
@@ -89,8 +113,6 @@ const ArticleEdit = () => {
             InputProps={{ readOnly: true }}
             variant="outlined"
           />
-
-          {/* Title */}
           <TextField
             label="Title"
             name="title"
@@ -100,8 +122,6 @@ const ArticleEdit = () => {
             variant="outlined"
             required
           />
-
-          {/* Link */}
           <TextField
             label="Link"
             name="link"
@@ -111,8 +131,6 @@ const ArticleEdit = () => {
             variant="outlined"
             required
           />
-
-          {/* Source */}
           <TextField
             label="Source"
             name="source"
@@ -122,8 +140,6 @@ const ArticleEdit = () => {
             variant="outlined"
             required
           />
-
-          {/* Domain */}
           <TextField
             label="Domain"
             name="domain"
@@ -133,8 +149,6 @@ const ArticleEdit = () => {
             variant="outlined"
             required
           />
-
-          {/* Published At */}
           <TextField
             label="Published At"
             name="publishedAt"
@@ -145,8 +159,6 @@ const ArticleEdit = () => {
             type="datetime-local"
             InputLabelProps={{ shrink: true }}
           />
-
-          {/* Description */}
           <TextField
             label="Description"
             name="description"
@@ -157,8 +169,6 @@ const ArticleEdit = () => {
             multiline
             rows={4}
           />
-
-          {/* Improved Description */}
           <TextField
             label="Improved Description"
             name="improvedDescription"
@@ -169,8 +179,24 @@ const ArticleEdit = () => {
             multiline
             rows={4}
           />
-
-          {/* Image URL */}
+          <TextField
+            label="SEO Title"
+            name="seoTitle"
+            value={article.seoTitle || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+          />
+          <TextField
+            label="SEO Description"
+            name="seoDescription"
+            value={article.seoDescription || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            inputProps={{ maxLength: 150 }} // Enforce 150 character limit
+            helperText={`${(article.seoDescription || '').length}/150 characters`}
+          />
           <TextField
             label="Image URL"
             name="imageUrl"
@@ -179,8 +205,6 @@ const ArticleEdit = () => {
             fullWidth
             variant="outlined"
           />
-
-          {/* Image Width */}
           <TextField
             label="Image Width"
             name="imageWidth"
@@ -190,8 +214,6 @@ const ArticleEdit = () => {
             variant="outlined"
             type="number"
           />
-
-          {/* Image Height */}
           <TextField
             label="Image Height"
             name="imageHeight"
@@ -201,8 +223,6 @@ const ArticleEdit = () => {
             variant="outlined"
             type="number"
           />
-
-          {/* Category */}
           <FormControl fullWidth variant="outlined">
             <InputLabel>Category</InputLabel>
             <Select
@@ -218,8 +238,6 @@ const ArticleEdit = () => {
               ))}
             </Select>
           </FormControl>
-
-          {/* Geotag */}
           <TextField
             label="Geotag"
             name="geotag"
@@ -228,8 +246,6 @@ const ArticleEdit = () => {
             fullWidth
             variant="outlined"
           />
-
-          {/* Tags */}
           <FormControl fullWidth variant="outlined">
             <InputLabel>Tags (comma-separated)</InputLabel>
             <OutlinedInput
@@ -239,8 +255,6 @@ const ArticleEdit = () => {
               label="Tags (comma-separated)"
             />
           </FormControl>
-
-          {/* Sent to Shopify */}
           <FormControlLabel
             control={
               <Checkbox
@@ -251,8 +265,6 @@ const ArticleEdit = () => {
             }
             label="Sent to Shopify"
           />
-
-          {/* Timestamps (Read-only) */}
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Created At"
@@ -269,11 +281,19 @@ const ArticleEdit = () => {
               variant="outlined"
             />
           </Box>
-
-          {/* Submit Button */}
-          <Button type="submit" variant="contained" color="primary">
-            Save
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button type="submit" variant="contained" color="primary">
+              Save
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handlePushToShopify}
+              disabled={loading}
+            >
+              Push to Shopify
+            </Button>
+          </Box>
         </Box>
       </form>
     </Box>

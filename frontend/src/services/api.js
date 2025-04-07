@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "/api"
+  baseURL: "/api",
 });
 
 // Articles
@@ -34,5 +34,11 @@ export const scrapeSource = async (sourceName) => {
 // Publish to Shopify
 export const publishShopify = async () => {
   const res = await API.post(`/system/publish-shopify`);
+  return res.data;
+};
+
+// Push a single article to Shopify
+export const pushArticleToShopify = async (uuid) => {
+  const res = await API.post(`/system/push-to-shopify/${uuid}`);
   return res.data;
 };

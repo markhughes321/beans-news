@@ -10,11 +10,13 @@ router.get("/articles/:uuid", articleController.getArticle);
 router.put("/articles/:uuid", articleController.updateArticle);
 router.delete("/articles/:uuid", articleController.deleteArticle);
 
-// Manual scraping: specify source name via request body or query param
-// e.g. POST /api/system/scrape?source=dailyCoffeeNews
+// Manual scraping
 router.post("/system/scrape", systemController.triggerScrape);
 
 // Manually send new articles to Shopify
 router.post("/system/publish-shopify", systemController.triggerShopifyPublish);
+
+// Push a single article to Shopify
+router.post("/system/push-to-shopify/:uuid", systemController.pushArticleToShopify);
 
 module.exports = router;

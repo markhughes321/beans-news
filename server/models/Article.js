@@ -1,5 +1,3 @@
-// File: ./server/models/Article.js
-
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 
@@ -13,20 +11,19 @@ const ArticleSchema = new mongoose.Schema(
     publishedAt: { type: Date },
     description: { type: String },
     improvedDescription: { type: String },
-
-    // NEW: store the extracted image URL + optional dimensions
+    seoTitle: { type: String, default: null }, // New field for SEO title
+    seoDescription: { type: String, default: null }, // New field for SEO description
     imageUrl: { type: String, default: null },
     imageWidth: { type: Number, default: null },
     imageHeight: { type: Number, default: null },
-
-    // category must be exactly one from the list
     category: { type: String, required: true },
     geotag: { type: String, default: null },
-    tags: [{ type: String }], // up to 2, or null
-    sentToShopify: { type: Boolean, default: false }
+    tags: [{ type: String }],
+    sentToShopify: { type: Boolean, default: false },
+    shopifyMetaobjectId: { type: String, default: null },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 

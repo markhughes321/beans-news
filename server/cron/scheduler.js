@@ -15,35 +15,36 @@ function initCronJobs() {
   const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
   const { sources = [], publishShopifySchedule } = config;
 
-  // For each source, schedule a cron job based on cronSchedule
   sources.forEach((source) => {
     if (!source.cronSchedule) {
-      logger.warn(`No cronSchedule specified for source '${source.name}'. Skipping scheduling.`);
+      logger.warn("No cronSchedule specified, skipping", { source: source.name });
       return;
     }
+    logger.info("Scheduling cron job for source", { source: source.name, schedule: source.cronSchedule });
     cron.schedule(source.cronSchedule, async () => {
-      logger.info(`CRON: Starting scrape for source '${source.name}'...`);
+      logger.info("CRON: Starting scrape", { source: source.name });
       try {
         const newCount = await scrapeSource(source);
-        logger.info(`CRON: Finished scraping '${source.name}'. Found ${newCount} new articles.`);
+        logger.info("CRON: Scrape completed", { source: source.name, newArticles: newCount });
       } catch (err) {
-        logger.error(`CRON: Scrape error for source '${source.name}'`, { error: err });
+        logger.error("CRON: Scrape error", { source: source.name, error: err.message });
       }
     });
   });
 
-  // Schedule Shopify publishing if configured
   if (publishShopifySchedule) {
+    logger.info("Scheduling Shopify publish", { schedule: publishShopifySchedule });
     cron.schedule(publishShopifySchedule, async () => {
-      logger.info("CRON: Starting daily publish to Shopify...");
+      logger.info("CRON: Starting Shopify publish");
       try {
         await sendArticlesToShopify();
+        logger.info("CRON: Shopify publish completed");
       } catch (err) {
-        logger.error("CRON: Shopify publish error", { error: err });
+        logger.error("CRON: Shopify publish error", { error: err.message });
       }
     });
   } else {
-    logger.warn("No publishShopifySchedule set in sources.json. Shopify publishing not scheduled automatically.");
+    logger.warn("No publishShopifySchedule set in sources.json");
   }
 }
 
