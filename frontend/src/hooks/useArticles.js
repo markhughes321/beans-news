@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getArticles, getArticle, updateArticle, deleteArticle, pushArticleToShopify } from '../services/api';
+import { 
+  getArticles, 
+  getArticle, 
+  updateArticle, 
+  deleteArticle, 
+  pushArticleToShopify,
+  editArticleOnShopify as apiEditArticleOnShopify // Rename the import to avoid conflict
+} from '../services/api';
 
 export const useArticles = (filters = null) => {
   const [articles, setArticles] = useState([]);
@@ -123,11 +130,39 @@ export const useArticles = (filters = null) => {
     setError(null);
     try {
       const result = await pushArticleToShopify(uuid);
+      setArticles((prev) =>
+        prev.map((article) =>
+          article.uuid === uuid ? { ...article, sentToShopify: true } : article
+        )
+      );
       return result;
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Failed to push article to Shopify';
       setError(errorMessage);
       console.error('Error pushing article to Shopify:', err);
+      throw err;
+    } finally {
+      setLoadingPush(false);
+    }
+  };
+
+  const editArticleOnShopify = async (uuid, data) => {
+    setLoadingPush(true);
+    setError(null);
+    console.log('Calling editArticleOnShopify with UUID:', uuid, 'Data:', data); // Debugging
+    try {
+      const result = await apiEditArticleOnShopify(uuid, data); // Use the renamed import
+      console.log('API response from editArticleOnShopify:', result); // Debugging
+      setArticles((prev) =>
+        prev.map((article) =>
+          article.uuid === uuid ? { ...article, ...data } : article
+        )
+      );
+      return result;
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to edit article on Shopify';
+      setError(errorMessage);
+      console.error('Error editing article on Shopify:', err);
       throw err;
     } finally {
       setLoadingPush(false);
@@ -155,5 +190,6 @@ export const useArticles = (filters = null) => {
     bulkDeleteArticles,
     bulkEditArticles,
     pushToShopify,
+    editArticleOnShopify,
   };
 };

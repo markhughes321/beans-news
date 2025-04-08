@@ -1,3 +1,4 @@
+// File: ./frontend/src/services/api.js
 import axios from "axios";
 
 const API = axios.create({
@@ -51,5 +52,10 @@ export const publishShopify = async () => {
 
 export const pushArticleToShopify = async (uuid) => {
   const res = await API.post(`/system/push-to-shopify/${uuid}`);
+  return res.data;
+};
+
+export const editArticleOnShopify = async (uuid, data) => {
+  const res = await API.put(`/system/edit-on-shopify/${uuid}`, data);
   return res.data;
 };

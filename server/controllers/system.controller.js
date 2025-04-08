@@ -1,3 +1,4 @@
+// File: ./server/controllers/system.controller.js
 const logger = require("../config/logger");
 const { scrapeSourceByName, processArticlesWithAI } = require("../services/scraper");
 const { sendArticlesToShopify, updateArticleInShopify } = require("../services/shopifyService");
@@ -7,7 +8,6 @@ const axios = require("axios");
 const SHOPIFY_API_URL = "https://b4cd1f-0d.myshopify.com/admin/api/2023-04/graphql.json";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
-// Define functions as standalone variables
 async function triggerScrape(req, res, next) {
   const sourceName = req.query.source || req.body.source;
   logger.info("Manual scrape requested", { source: sourceName });
@@ -22,7 +22,7 @@ async function triggerScrape(req, res, next) {
     res.json({
       message: `Scrape triggered for ${sourceName}`,
       newArticles: result.newCount,
-      updatedArticles: result.updatedCount, // Add updatedArticles to the response
+      updatedArticles: result.updatedCount,
     });
   } catch (err) {
     logger.error("Manual scrape error", { source: sourceName, error: err.message });
@@ -73,7 +73,7 @@ async function pushArticleToShopify(req, res, next) {
       return res.status(404).json({ error: "Article not found" });
     }
 
-    const handleBase = article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").substring(0, 50);
+    const handleBase = article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-");
     const dateStr = article.publishedAt ? article.publishedAt.toISOString().split("T")[0].replace(/-/g, "") : new Date().toISOString().split("T")[0].replace(/-/g, "");
     const handle = `${handleBase}-${dateStr}`;
 
@@ -169,4 +169,112 @@ async function pushArticleToShopify(req, res, next) {
   }
 }
 
-module.exports = { triggerScrape, triggerAIProcessing, triggerShopifyPublish, pushArticleToShopify };
+async function editArticleOnShopify(req, res, next) {
+  const { uuid } = req.params;
+  const updatedArticle = req.body;
+  logger.info("Editing article on Shopify", { uuid });
+
+  try {
+    const article = await Article.findOne({ uuid })
+      .select("uuid title link source publishedAt improvedDescription seoTitle seoDescription domain imageUrl tags geotag category shopifyMetaobjectId _id")
+      .lean();
+
+    if (!article) {
+      logger.warn("Article not found for Shopify edit", { uuid });
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    if (!article.shopifyMetaobjectId) {
+      logger.warn("Article not yet sent to Shopify", { uuid });
+      return res.status(400).json({ error: "Article has not been sent to Shopify yet" });
+    }
+
+    // Update local database first
+    const updated = await Article.findOneAndUpdate(
+      { uuid },
+      { ...updatedArticle, updatedAt: new Date() },
+      { new: true }
+    );
+
+    // Prepare fields for Shopify update
+    const fields = [
+      { key: "uuid", value: updated.uuid || "" },
+      { key: "publishdate", value: updated.publishedAt ? updated.publishedAt.toISOString() : new Date().toISOString() },
+      { key: "title", value: updated.title || "Untitled" },
+      { key: "description", value: updated.improvedDescription || "No description available." },
+      { key: "url", value: updated.link || "" },
+      { key: "domain", value: updated.domain || "unknown" },
+      { key: "image", value: updated.imageUrl || "" },
+      { key: "tags", value: updated.tags && updated.tags.length > 0 ? updated.tags.join(", ") : "" },
+      { key: "attribution", value: updated.source || "Unknown Source" },
+      { key: "geotag", value: updated.geotag || "" },
+      { key: "category", value: updated.category || "Market" },
+      { key: "seotitle", value: updated.seoTitle || `${updated.title} | Beans NEWS` },
+      { key: "seodescription", value: updated.seoDescription || "" },
+    ];
+
+    const mutation = `
+      mutation UpdateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+        metaobjectUpdate(id: $id, metaobject: $metaobject) {
+          metaobject {
+            id
+            handle
+            type
+            fields {
+              key
+              value
+            }
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      id: article.shopifyMetaobjectId,
+      metaobject: { fields }
+    };
+
+    logger.debug("Updating article in Shopify", { title: updated.title, shopifyId: article.shopifyMetaobjectId });
+    const response = await axios.post(
+      SHOPIFY_API_URL,
+      { query: mutation, variables },
+      { headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN, "Content-Type": "application/json" } }
+    );
+
+    const { data } = response;
+    if (data.errors) {
+      throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+    }
+
+    const { metaobject, userErrors } = data.data.metaobjectUpdate;
+    if (userErrors && userErrors.length > 0) {
+      throw new Error(`Shopify user errors: ${JSON.stringify(userErrors)}`);
+    }
+
+    if (!metaobject) {
+      throw new Error("No metaobject returned from Shopify after update");
+    }
+
+    logger.info("Article updated in Shopify and database", { link: updated.link, shopifyId: metaobject.id });
+    res.json({ 
+      message: `Article updated in Shopify and database: ${updated.link}`,
+      article: updated
+    });
+  } catch (err) {
+    logger.error("Error editing article on Shopify", { uuid, error: err.message });
+    next(err);
+  }
+}
+
+module.exports = { 
+  triggerScrape, 
+  triggerAIProcessing, 
+  triggerShopifyPublish, 
+  pushArticleToShopify,
+  editArticleOnShopify 
+};

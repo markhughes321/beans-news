@@ -1,3 +1,4 @@
+// File: ./frontend/src/pages/ArticleEdit.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -34,7 +35,16 @@ const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { fetchArticleById, updateArticleById, pushToShopify, loadingArticle, loadingUpdate, loadingPush, error } = useArticles();
+  const { 
+    fetchArticleById, 
+    updateArticleById, 
+    pushToShopify, 
+    editArticleOnShopify,
+    loadingArticle, 
+    loadingUpdate, 
+    loadingPush, 
+    error 
+  } = useArticles();
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [shopifyMessage, setShopifyMessage] = useState('');
@@ -92,8 +102,26 @@ const ArticleEdit = () => {
     try {
       const result = await pushToShopify(uuid);
       setShopifyMessage(result.message);
+      // Refresh article data after push
+      const updatedArticle = await fetchArticleById(uuid);
+      setArticle(updatedArticle);
     } catch (err) {
       setShopifyError('Failed to push article to Shopify');
+      console.error(err);
+    }
+  };
+
+  const handleEditOnShopify = async () => {
+    setShopifyMessage('');
+    setShopifyError(null);
+    try {
+      const result = await editArticleOnShopify(uuid, article);
+      setShopifyMessage(result.message);
+      // Refresh article data after edit
+      const updatedArticle = await fetchArticleById(uuid);
+      setArticle(updatedArticle);
+    } catch (err) {
+      setShopifyError('Failed to edit article on Shopify');
       console.error(err);
     }
   };
@@ -286,7 +314,7 @@ const ArticleEdit = () => {
             onChange={handleChange}
             fullWidth
             variant="outlined"
-            InputProps={{ readOnly: true }} // Make it read-only as it’s managed by Shopify
+            InputProps={{ readOnly: true }}
           />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <FormControlLabel
@@ -327,16 +355,29 @@ const ArticleEdit = () => {
             />
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button type="submit" variant="contained" color="primary" disabled={loadingUpdate}>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              color="primary" 
+              disabled={loadingUpdate}
+            >
               Save
             </Button>
             <Button
               variant="contained"
               color="secondary"
               onClick={handlePushToShopify}
-              disabled={loadingPush}
+              disabled={loadingPush || article.sentToShopify}
             >
               Push to Shopify
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleEditOnShopify}
+              disabled={loadingPush || !article.sentToShopify}
+            >
+              Edit on Shopify
             </Button>
           </Box>
         </Box>

@@ -2,31 +2,29 @@
 
 # Input parameter (optional)
 target_folder="$1"
-
-# Output file
 output_file="combined_project_files.js"
 
 # Remove the output file if it already exists
-if [ -f "$output_file" ]; then
-    rm "$output_file"
-fi
+[ -f "$output_file" ] && rm "$output_file"
 
-# Set a limit for how many files to combine (optional)
+# Set limit
 file_limit=50
-file_count=0
 
 # Determine search path
 if [ "$target_folder" == "frontend" ] || [ "$target_folder" == "server" ]; then
     search_path="./$target_folder"
 else
-    search_path="."  # Default to entire project
+    search_path="."
 fi
 
 echo "Searching in: $search_path"
 echo "Including files (up to $file_limit):"
 echo "------------------------------------"
 
-# Loop through matching files
+# Temp file to store metadata
+temp_metadata=$(mktemp)
+
+# Collect metadata
 find "$search_path" -type f \( -name "*.js" -o -name "*.db" -o -name "*.env" -o -name "*.md" \) \
   -not -path "*/node_modules/*" \
   -not -name "structure.md" \
@@ -37,21 +35,30 @@ find "$search_path" -type f \( -name "*.js" -o -name "*.db" -o -name "*.env" -o 
   -not -path "*/dataRequired/*" \
   -not -path "*/doc/*" \
   | while read -r file; do
-
-    if [ "$file_count" -ge "$file_limit" ]; then
-        break
+    lines=$(wc -l < "$file" | xargs)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        modified=$(stat -f "%m" "$file")  # Unix timestamp on macOS
+        readable_date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file")
+    else
+        modified=$(stat -c "%Y" "$file")
+        readable_date=$(stat -c "%y" "$file" | cut -d'.' -f1)
     fi
+    echo "$modified|$file|$lines|$readable_date" >> "$temp_metadata"
+done
 
-    # Print to terminal
-    echo "$file"
+# Sort by modified descending and loop through results
+sort -r -n "$temp_metadata" | head -n "$file_limit" | while IFS='|' read -r mod file lines readable; do
+    echo "$file — $lines lines — Last modified: $readable"
 
-    # Append to output file
+    # Append to combined output file
     echo "// File: $file" >> "$output_file"
     cat "$file" >> "$output_file"
     echo -e "\n\n" >> "$output_file"
-
-    file_count=$((file_count + 1))
 done
 
 echo "------------------------------------"
-echo "✅ Combined $file_count files from '${target_folder:-entire project}' into $output_file."
+combined_count=$(wc -l < "$temp_metadata" | xargs)
+echo "✅ Combined $( [ "$combined_count" -gt "$file_limit" ] && echo "$file_limit" || echo "$combined_count" ) files from '${target_folder:-entire project}' into $output_file."
+
+# Clean up
+rm "$temp_metadata"

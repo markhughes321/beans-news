@@ -1,3 +1,4 @@
+// File: ./server/routes/index.js
 const express = require("express");
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.post("/system/scrape", systemController.triggerScrape);
 router.post("/system/process-ai", systemController.triggerAIProcessing);
 router.post("/system/publish-shopify", systemController.triggerShopifyPublish);
 router.post("/system/push-to-shopify/:uuid", systemController.pushArticleToShopify);
+router.put("/system/edit-on-shopify/:uuid", systemController.editArticleOnShopify);
 
 module.exports = router;
