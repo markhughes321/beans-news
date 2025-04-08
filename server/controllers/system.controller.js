@@ -2,6 +2,7 @@
 const logger = require("../config/logger");
 const { scrapeSourceByName, processArticlesWithAI } = require("../services/scraper");
 const { sendArticlesToShopify, updateArticleInShopify } = require("../services/shopifyService");
+const { processArticleAI } = require("../services/ai"); // Add this import
 const Article = require("../models/Article");
 const axios = require("axios");
 
@@ -271,10 +272,57 @@ async function editArticleOnShopify(req, res, next) {
   }
 }
 
-module.exports = { 
-  triggerScrape, 
-  triggerAIProcessing, 
-  triggerShopifyPublish, 
+async function processSingleArticleWithAI(req, res, next) {
+  const { uuid } = req.params;
+  logger.info("Processing single article with AI", { uuid });
+  try {
+    const article = await Article.findOne({ uuid });
+    if (!article) {
+      logger.warn("Article not found for AI processing", { uuid });
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    if (article.processedByAI) {
+      logger.info("Article already processed by AI", { uuid });
+      return res.status(200).json({ message: "Article already processed", article });
+    }
+
+    const aiData = await processArticleAI({
+      title: article.title,
+      description: article.description,
+      imageUrl: article.imageUrl,
+    });
+
+    const updatedArticle = await Article.findOneAndUpdate(
+      { uuid },
+      {
+        $set: {
+          category: aiData.category,
+          geotag: aiData.geotag,
+          tags: aiData.tags,
+          improvedDescription: aiData.improvedDescription,
+          seoTitle: aiData.seoTitle,
+          seoDescription: aiData.seoDescription,
+          processedByAI: true,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    logger.info("Single article processed with AI", { uuid, title: updatedArticle.title });
+    res.json({ message: "Article processed with AI", article: updatedArticle });
+  } catch (err) {
+    logger.error("Error processing single article with AI", { uuid, error: err.message });
+    next(err);
+  }
+}
+
+module.exports = {
+  triggerScrape,
+  triggerAIProcessing,
+  triggerShopifyPublish,
   pushArticleToShopify,
-  editArticleOnShopify 
+  editArticleOnShopify,
+  processSingleArticleWithAI,
 };

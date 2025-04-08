@@ -5,7 +5,7 @@ import {
   updateArticle, 
   deleteArticle, 
   pushArticleToShopify,
-  editArticleOnShopify as apiEditArticleOnShopify // Rename the import to avoid conflict
+  editArticleOnShopify as apiEditArticleOnShopify
 } from '../services/api';
 
 export const useArticles = (filters = null) => {
@@ -104,9 +104,7 @@ export const useArticles = (filters = null) => {
     setLoadingUpdate(true);
     setError(null);
     try {
-      const updates = uuids.map((uuid) =>
-        updateArticle(uuid, { [field]: value })
-      );
+      const updates = uuids.map((uuid) => updateArticle(uuid, { [field]: value }));
       const updatedArticles = await Promise.all(updates);
       setArticles((prev) =>
         prev.map((article) =>
@@ -149,14 +147,10 @@ export const useArticles = (filters = null) => {
   const editArticleOnShopify = async (uuid, data) => {
     setLoadingPush(true);
     setError(null);
-    console.log('Calling editArticleOnShopify with UUID:', uuid, 'Data:', data); // Debugging
     try {
-      const result = await apiEditArticleOnShopify(uuid, data); // Use the renamed import
-      console.log('API response from editArticleOnShopify:', result); // Debugging
+      const result = await apiEditArticleOnShopify(uuid, data);
       setArticles((prev) =>
-        prev.map((article) =>
-          article.uuid === uuid ? { ...article, ...data } : article
-        )
+        prev.map((article) => (article.uuid === uuid ? { ...article, ...data } : article))
       );
       return result;
     } catch (err) {

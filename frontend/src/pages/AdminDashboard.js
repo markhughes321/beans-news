@@ -1,3 +1,4 @@
+// File: ./frontend/src/pages/AdminDashboard.js
 import React, { useMemo, useState } from 'react';
 import { Typography, Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import ArticlesTable from '../components/layout/ArticlesTable';
@@ -36,16 +37,10 @@ const AdminDashboard = () => {
       <Box sx={{ mb: 3 }}>
         <FormControl sx={{ minWidth: 200 }}>
           <InputLabel>Source</InputLabel>
-          <Select
-            value={selectedSource}
-            onChange={handleSourceChange}
-            label="Source"
-          >
+          <Select value={selectedSource} onChange={handleSourceChange} label="Source">
             <MenuItem value="">All Sources</MenuItem>
             {sources.map((source) => (
-              <MenuItem key={source} value={source}>
-                {source}
-              </MenuItem>
+              <MenuItem key={source} value={source}>{source}</MenuItem>
             ))}
           </Select>
         </FormControl>

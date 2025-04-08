@@ -16,12 +16,13 @@ const ArticleSchema = new mongoose.Schema(
     imageUrl: { type: String, default: null },
     imageWidth: { type: Number, default: null },
     imageHeight: { type: Number, default: null },
-    category: { type: String, required: true, default: "Market" }, // Default category
+    category: { type: String, required: true, default: "Market" },
     geotag: { type: String, default: null },
     tags: [{ type: String }],
     sentToShopify: { type: Boolean, default: false },
     shopifyMetaobjectId: { type: String, default: null },
-    processedByAI: { type: Boolean, default: false }, // Already present
+    processedByAI: { type: Boolean, default: false },
+    excludedFromShopify: { type: Boolean, default: false }, // New field
   },
   {
     timestamps: true,

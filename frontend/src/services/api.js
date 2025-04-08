@@ -59,3 +59,8 @@ export const editArticleOnShopify = async (uuid, data) => {
   const res = await API.put(`/system/edit-on-shopify/${uuid}`, data);
   return res.data;
 };
+
+export const processSingleArticleWithAI = async (uuid) => {
+  const res = await API.post(`/system/process-single-ai/${uuid}`);
+  return res.data;
+};

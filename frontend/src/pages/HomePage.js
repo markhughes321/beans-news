@@ -1,3 +1,4 @@
+// File: ./frontend/src/pages/HomePage.js
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
@@ -53,19 +54,11 @@ const HomePage = () => {
   };
 
   const handleFilterAIProcessed = () => {
-    setFilterAIProcessed((prev) => {
-      if (prev === undefined) return true;
-      if (prev === true) return false;
-      return undefined;
-    });
+    setFilterAIProcessed((prev) => (prev === undefined ? true : prev === true ? false : undefined));
   };
 
   const handleFilterSentToShopify = () => {
-    setFilterSentToShopify((prev) => {
-      if (prev === undefined) return true;
-      if (prev === true) return false;
-      return undefined;
-    });
+    setFilterSentToShopify((prev) => (prev === undefined ? true : prev === true ? false : undefined));
   };
 
   const handleSourceChange = (event) => {
@@ -92,63 +85,27 @@ const HomePage = () => {
       />
       <Box sx={{ display: 'flex', gap: 2, my: 2, alignItems: 'center' }}>
         <FormControlLabel
-          control={
-            <Checkbox
-              checked={filterAIProcessed !== undefined}
-              indeterminate={filterAIProcessed === false}
-              onChange={handleFilterAIProcessed}
-              icon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
-              checkedIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
-              indeterminateIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
-            />
-          }
+          control={<Checkbox checked={filterAIProcessed !== undefined} indeterminate={filterAIProcessed === false} onChange={handleFilterAIProcessed} icon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} checkedIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} />}
           label="AI Processed"
         />
         <FormControlLabel
-          control={
-            <Checkbox
-              checked={filterSentToShopify !== undefined}
-              indeterminate={filterSentToShopify === false}
-              onChange={handleFilterSentToShopify}
-              icon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
-              checkedIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
-              indeterminateIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
-            />
-          }
+          control={<Checkbox checked={filterSentToShopify !== undefined} indeterminate={filterSentToShopify === false} onChange={handleFilterSentToShopify} icon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} checkedIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} />}
           label="Sent to Shopify"
         />
         <FormControl sx={{ minWidth: 120 }}>
           <InputLabel>Source</InputLabel>
-          <Select
-            value={selectedSource}
-            onChange={handleSourceChange}
-            label="Source"
-          >
+          <Select value={selectedSource} onChange={handleSourceChange} label="Source">
             <MenuItem value="">All Sources</MenuItem>
             {sources.map((source) => (
-              <MenuItem key={source} value={source}>
-                {source}
-              </MenuItem>
+              <MenuItem key={source} value={source}>{source}</MenuItem>
             ))}
           </Select>
         </FormControl>
       </Box>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-          gap: 3,
-          py: 3,
-        }}
-      >
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 3, py: 3 }}>
         {filteredArticles.length > 0 ? (
           filteredArticles.map((article) => (
-            <ArticleCard
-              key={article.uuid}
-              article={article}
-              filters={filters}
-              from="/home"
-            />
+            <ArticleCard key={article.uuid} article={article} filters={filters} from="/home" />
           ))
         ) : (
           <Typography sx={{ textAlign: 'center', color: 'text.secondary', mt: 3 }}>

@@ -17,5 +17,6 @@ router.post("/system/process-ai", systemController.triggerAIProcessing);
 router.post("/system/publish-shopify", systemController.triggerShopifyPublish);
 router.post("/system/push-to-shopify/:uuid", systemController.pushArticleToShopify);
 router.put("/system/edit-on-shopify/:uuid", systemController.editArticleOnShopify);
+router.post("/system/process-single-ai/:uuid", systemController.processSingleArticleWithAI);
 
 module.exports = router;
