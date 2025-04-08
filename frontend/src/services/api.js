@@ -5,8 +5,8 @@ const API = axios.create({
 });
 
 // Articles
-export const getArticles = async () => {
-  const res = await API.get("/articles");
+export const getArticles = async (params = {}) => {
+  const res = await API.get("/articles", { params });
   return res.data;
 };
 
@@ -28,6 +28,12 @@ export const deleteArticle = async (uuid) => {
 // Manual Scraping
 export const scrapeSource = async (sourceName) => {
   const res = await API.post(`/system/scrape?source=${sourceName}`);
+  return res.data;
+};
+
+// Process articles with AI
+export const processWithAI = async (sourceName) => {
+  const res = await API.post(`/system/process-ai?source=${sourceName}`);
   return res.data;
 };
 

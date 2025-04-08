@@ -1,5 +1,5 @@
 const logger = require("../config/logger");
-const { scrapeSourceByName } = require("../services/scraper");
+const { scrapeSourceByName, processArticlesWithAI } = require("../services/scraper");
 const { sendArticlesToShopify, updateArticleInShopify } = require("../services/shopifyService");
 const Article = require("../models/Article");
 const axios = require("axios");
@@ -17,11 +17,33 @@ async function triggerScrape(req, res, next) {
       return res.status(400).json({ error: "Missing source parameter." });
     }
 
-    const newCount = await scrapeSourceByName(sourceName);
-    logger.info("Manual scrape completed", { source: sourceName, newArticles: newCount });
-    res.json({ message: `Scrape triggered for ${sourceName}`, newArticles: newCount });
+    const result = await scrapeSourceByName(sourceName);
+    logger.info("Manual scrape completed", { source: sourceName, newArticles: result.newCount, updatedArticles: result.updatedCount });
+    res.json({
+      message: `Scrape triggered for ${sourceName}`,
+      newArticles: result.newCount,
+      updatedArticles: result.updatedCount, // Add updatedArticles to the response
+    });
   } catch (err) {
     logger.error("Manual scrape error", { source: sourceName, error: err.message });
+    next(err);
+  }
+}
+
+async function triggerAIProcessing(req, res, next) {
+  const sourceName = req.query.source || req.body.source;
+  logger.info("Manual AI processing requested", { source: sourceName });
+  try {
+    if (!sourceName) {
+      logger.warn("Missing source parameter in AI processing request");
+      return res.status(400).json({ error: "Missing source parameter." });
+    }
+
+    const result = await processArticlesWithAI(sourceName);
+    logger.info("Manual AI processing completed", { source: sourceName, processedCount: result.processedCount });
+    res.json({ message: `AI processing triggered for ${sourceName}`, processedCount: result.processedCount });
+  } catch (err) {
+    logger.error("Manual AI processing error", { source: sourceName, error: err.message });
     next(err);
   }
 }
@@ -128,4 +150,4 @@ async function pushArticleToShopify(req, res, next) {
   }
 }
 
-module.exports = { triggerScrape, triggerShopifyPublish, pushArticleToShopify };
+module.exports = { triggerScrape, triggerAIProcessing, triggerShopifyPublish, pushArticleToShopify };

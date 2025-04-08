@@ -1,28 +1,32 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getArticles, getArticle, updateArticle, deleteArticle, pushArticleToShopify } from '../services/api';
 
-export const useArticles = () => {
+export const useArticles = (filters = null) => { // Change default to null
   const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingArticles, setLoadingArticles] = useState(false);
+  const [loadingArticle, setLoadingArticle] = useState(false);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
+  const [loadingPush, setLoadingPush] = useState(false);
   const [error, setError] = useState(null);
+  const prevFiltersRef = useRef(filters);
 
-  const fetchArticles = async () => {
-    setLoading(true);
+  const fetchArticles = useCallback(async (fetchFilters = filters) => {
+    setLoadingArticles(true);
     setError(null);
     try {
-      const data = await getArticles();
+      const data = await getArticles(fetchFilters);
       setArticles(data);
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Failed to fetch articles';
       setError(errorMessage);
       console.error('Error fetching articles:', err);
     } finally {
-      setLoading(false);
+      setLoadingArticles(false);
     }
-  };
+  }, [filters]);
 
   const fetchArticleById = useCallback(async (uuid) => {
-    setLoading(true);
+    setLoadingArticle(true);
     setError(null);
     try {
       const data = await getArticle(uuid);
@@ -36,29 +40,31 @@ export const useArticles = () => {
       console.error('Error fetching article:', err);
       return null;
     } finally {
-      setLoading(false);
+      setLoadingArticle(false);
     }
   }, []);
 
   const updateArticleById = async (uuid, data) => {
-    setLoading(true);
+    setLoadingUpdate(true);
     setError(null);
     try {
       const updated = await updateArticle(uuid, data);
       setArticles((prev) =>
         prev.map((article) => (article.uuid === uuid ? updated : article))
       );
+      return updated;
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Failed to update article';
       setError(errorMessage);
       console.error('Error updating article:', err);
+      throw err;
     } finally {
-      setLoading(false);
+      setLoadingUpdate(false);
     }
   };
 
   const deleteArticleById = async (uuid) => {
-    setLoading(true);
+    setLoadingUpdate(true);
     setError(null);
     try {
       await deleteArticle(uuid);
@@ -67,17 +73,17 @@ export const useArticles = () => {
       const errorMessage = err.response?.data?.error || 'Failed to delete article';
       setError(errorMessage);
       console.error('Error deleting article:', err);
+      throw err;
     } finally {
-      setLoading(false);
+      setLoadingUpdate(false);
     }
   };
 
   const pushToShopify = async (uuid) => {
-    setLoading(true);
+    setLoadingPush(true);
     setError(null);
     try {
       const result = await pushArticleToShopify(uuid);
-      await fetchArticles(); // Refresh the articles list to reflect updated sentToShopify status
       return result;
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Failed to push article to Shopify';
@@ -85,17 +91,24 @@ export const useArticles = () => {
       console.error('Error pushing article to Shopify:', err);
       throw err;
     } finally {
-      setLoading(false);
+      setLoadingPush(false);
     }
   };
 
   useEffect(() => {
-    fetchArticles();
-  }, []);
+    // Only fetch articles if filters are explicitly provided
+    if (filters !== null) {
+      fetchArticles(filters);
+      prevFiltersRef.current = filters;
+    }
+  }, [fetchArticles, filters]);
 
   return {
     articles,
-    loading,
+    loadingArticles,
+    loadingArticle,
+    loadingUpdate,
+    loadingPush,
     error,
     fetchArticles,
     fetchArticleById,

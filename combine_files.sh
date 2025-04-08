@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Input parameter (optional)
+target_folder="$1"
+
 # Output file
 output_file="combined_project_files.js"
 
@@ -8,36 +11,47 @@ if [ -f "$output_file" ]; then
     rm "$output_file"
 fi
 
-# Set a limit for how many files to combine (optional: comment out or set a high value if not needed)
+# Set a limit for how many files to combine (optional)
 file_limit=50
 file_count=0
 
-# Loop through important .js, .db, .env, and .md files in the project,
-# excluding node_modules, logs, reports, and specific files/folders.
-find . -type f \( -name "*.js" -o -name "*.db" -o -name "*.env" -o -name "*.md" \) \
+# Determine search path
+if [ "$target_folder" == "frontend" ] || [ "$target_folder" == "server" ]; then
+    search_path="./$target_folder"
+else
+    search_path="."  # Default to entire project
+fi
+
+echo "Searching in: $search_path"
+echo "Including files (up to $file_limit):"
+echo "------------------------------------"
+
+# Loop through matching files
+find "$search_path" -type f \( -name "*.js" -o -name "*.db" -o -name "*.env" -o -name "*.md" \) \
   -not -path "*/node_modules/*" \
   -not -name "structure.md" \
   -not -iname "readme.md" \
-  -not -path "./logs/*" \
-  -not -path "./backendApproach/*" \
-  -not -path "./dataRequired/*" \
-  -not -name "database.md" \
-  -not -path "./doc/*" \
-  -not -path "./reports/*" \
+  -not -path "*/logs/*" \
+  -not -path "*/reports/*" \
+  -not -path "*/backendApproach/*" \
+  -not -path "*/dataRequired/*" \
+  -not -path "*/doc/*" \
   | while read -r file; do
 
-    # Break the loop if the file limit is reached
     if [ "$file_count" -ge "$file_limit" ]; then
         break
     fi
 
-    # Append the file contents to the output file with a comment header
+    # Print to terminal
+    echo "$file"
+
+    # Append to output file
     echo "// File: $file" >> "$output_file"
     cat "$file" >> "$output_file"
     echo -e "\n\n" >> "$output_file"
 
-    # Increment file count
     file_count=$((file_count + 1))
 done
 
-echo "Combined $file_count files into $output_file."
+echo "------------------------------------"
+echo "✅ Combined $file_count files from '${target_folder:-entire project}' into $output_file."

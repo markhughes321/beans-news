@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Typography, Box } from '@mui/material';
 import ArticlesTable from '../components/layout/ArticlesTable';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useArticles } from '../hooks/useArticles';
 
 const AdminDashboard = () => {
-  const { articles, loading, error, deleteArticleById } = useArticles();
+  const filters = useMemo(() => ({}), []);
+  const { articles, loadingArticles, error, deleteArticleById } = useArticles(filters);
 
-  if (loading) return <LoadingSpinner />;
+  if (loadingArticles) return <LoadingSpinner />;
   if (error) return <Typography color="error">{error}</Typography>;
 
   return (

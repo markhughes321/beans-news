@@ -35,6 +35,7 @@ const ArticlesTable = ({ articles, onDelete }) => (
               <Link
                 component={RouterLink}
                 to={`/article/edit/${article.uuid}`}
+                state={{ from: '/admin' }} // Pass the originating path
                 sx={{ mr: 1 }}
               >
                 Edit

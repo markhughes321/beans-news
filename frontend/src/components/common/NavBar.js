@@ -7,8 +7,8 @@ const NavBar = () => {
   const currentPath = location.pathname;
 
   const tabValue = () => {
-    if (currentPath === '/') return 0;
-    if (currentPath === '/home') return 1;
+    if (currentPath === '/' || currentPath === '/home') return 0;
+    if (currentPath === '/admin') return 1;
     if (currentPath === '/scraping') return 2;
     return false;
   };
@@ -18,15 +18,15 @@ const NavBar = () => {
       <Toolbar sx={{ justifyContent: 'center' }}>
         <Tabs value={tabValue()} aria-label="navigation tabs">
           <Tab
-            label="Articles"
-            component={Link}
-            to="/"
-            sx={{ textTransform: 'none', fontWeight: 500 }}
-          />
-          <Tab
             label="Home"
             component={Link}
             to="/home"
+            sx={{ textTransform: 'none', fontWeight: 500 }}
+          />
+          <Tab
+            label="Admin Dashboard"
+            component={Link}
+            to="/admin"
             sx={{ textTransform: 'none', fontWeight: 500 }}
           />
           <Tab

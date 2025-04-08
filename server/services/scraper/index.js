@@ -1,8 +1,8 @@
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
 const logger = require("../../config/logger");
 const Article = require("../../models/Article");
-const { processArticleAI } = require("../ai");
+const { processArticleAI } = require("../ai"); // Add this import
 
 async function scrapeSource(sourceConfig) {
   const { name, url, scraperFile } = sourceConfig;
@@ -14,16 +14,12 @@ async function scrapeSource(sourceConfig) {
     throw new Error(`No scraperFile specified for source '${name}'`);
   }
 
-  // Define the scraper file path relative to this file's location
   const scraperPath = path.join(__dirname, `${scraperFile}.js`);
-
-  // Check if the scraper file exists
   if (!fs.existsSync(scraperPath)) {
     logger.error("Scraper file not found", { source: name, file: scraperPath });
     throw new Error(`Scraper file '${scraperFile}.js' not found for source '${name}'`);
   }
 
-  // Dynamically load the scraper
   let scraperModule;
   try {
     scraperModule = require(scraperPath);
@@ -32,13 +28,11 @@ async function scrapeSource(sourceConfig) {
     throw new Error(`Failed to load scraper '${scraperFile}.js' for source '${name}': ${err.message}`);
   }
 
-  // Ensure the scraper exports a 'scrape' function
   if (typeof scraperModule.scrape !== "function") {
     logger.error("Scraper module does not export a 'scrape' function", { source: name, file: scraperPath });
     throw new Error(`Scraper '${scraperFile}.js' must export a 'scrape' function`);
   }
 
-  // Execute the scrape
   let rawArticles;
   try {
     rawArticles = await scraperModule.scrape();
@@ -54,37 +48,98 @@ async function scrapeSource(sourceConfig) {
 
   logger.debug("Processing scraped articles", { count: rawArticles.length });
   let newCount = 0;
+  let updatedCount = 0;
+
   for (const raw of rawArticles) {
     try {
       const exists = await Article.findOne({ link: raw.link });
       if (exists) {
-        logger.debug("Article already exists, skipping", { link: raw.link });
+        // Update existing article only if it hasn't been processed by AI
+        if (!exists.processedByAI) {
+          await Article.updateOne(
+            { link: raw.link },
+            {
+              $set: {
+                title: raw.title,
+                source: raw.source,
+                domain: raw.domain,
+                publishedAt: raw.publishedAt || new Date(),
+                description: raw.description || "",
+                imageUrl: raw.imageUrl || null,
+                imageWidth: raw.imageWidth || null,
+                imageHeight: raw.imageHeight || null,
+                category: raw.category || "Market",
+              },
+            }
+          );
+          updatedCount++;
+          logger.debug("Updated existing article", { link: raw.link });
+        } else {
+          logger.debug("Article already processed by AI, skipping update", { link: raw.link });
+        }
         continue;
       }
 
-      logger.debug("Processing article with AI", { title: raw.title });
-      const aiData = await processArticleAI(raw);
-
+      // Create new article
       const newArticle = new Article({
         ...raw,
-        category: aiData.category,
-        geotag: aiData.geotag,
-        tags: aiData.tags,
-        improvedDescription: aiData.improvedDescription,
-        seoTitle: aiData.seoTitle,
-        seoDescription: aiData.seoDescription,
+        category: raw.category || "Market",
         sentToShopify: false,
+        processedByAI: false,
       });
       await newArticle.save();
       newCount++;
       logger.info("Saved new article", { title: raw.title, uuid: newArticle.uuid });
     } catch (err) {
-      logger.error("Error saving scraped article", { link: raw.link, error: err.message });
+      logger.error("Error saving/updating scraped article", { link: raw.link, error: err.message });
     }
   }
 
-  logger.info("Scrape completed for source", { source: name, newArticles: newCount });
-  return newCount;
+  logger.info("Scrape completed for source", { source: name, newArticles: newCount, updatedArticles: updatedCount });
+  return { newCount, updatedCount };
+}
+
+async function processArticlesWithAI(sourceName) {
+  logger.info("Initiating AI processing for source", { source: sourceName });
+  try {
+    const articles = await Article.find({ source: sourceName, processedByAI: false });
+    if (articles.length === 0) {
+      logger.info("No unprocessed articles found for AI processing", { source: sourceName });
+      return { processedCount: 0 };
+    }
+
+    let processedCount = 0;
+    for (const article of articles) {
+      try {
+        logger.debug("Processing article with AI", { title: article.title });
+        const aiData = await processArticleAI(article); // Now this should work
+        await Article.updateOne(
+          { _id: article._id },
+          {
+            $set: {
+              category: aiData.category,
+              geotag: aiData.geotag,
+              tags: aiData.tags,
+              improvedDescription: aiData.improvedDescription,
+              seoTitle: aiData.seoTitle,
+              seoDescription: aiData.seoDescription,
+              processedByAI: true,
+            },
+          }
+        );
+        processedCount++;
+        logger.info("Article processed by AI", { title: article.title });
+      } catch (err) {
+        logger.error("Error processing article with AI", { title: article.title, error: err.message });
+      }
+    }
+
+    logger.info("AI processing completed", { source: sourceName, processedCount });
+    return { processedCount };
+  } catch (err) {
+    logger.error("Error in processArticlesWithAI", { source: sourceName, error: err.message });
+    throw err;
+  }
 }
 
 async function scrapeSourceByName(sourceName) {
@@ -104,4 +159,4 @@ async function scrapeSourceByName(sourceName) {
   }
 }
 
-module.exports = { scrapeSource, scrapeSourceByName };
+module.exports = { scrapeSource, scrapeSourceByName, processArticlesWithAI };

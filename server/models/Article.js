@@ -11,16 +11,17 @@ const ArticleSchema = new mongoose.Schema(
     publishedAt: { type: Date },
     description: { type: String },
     improvedDescription: { type: String },
-    seoTitle: { type: String, default: null }, // New field for SEO title
-    seoDescription: { type: String, default: null }, // New field for SEO description
+    seoTitle: { type: String, default: null },
+    seoDescription: { type: String, default: null },
     imageUrl: { type: String, default: null },
     imageWidth: { type: Number, default: null },
     imageHeight: { type: Number, default: null },
-    category: { type: String, required: true },
+    category: { type: String, required: true, default: "Market" }, // Default category
     geotag: { type: String, default: null },
     tags: [{ type: String }],
     sentToShopify: { type: Boolean, default: false },
     shopifyMetaobjectId: { type: String, default: null },
+    processedByAI: { type: Boolean, default: false }, // Already present
   },
   {
     timestamps: true,

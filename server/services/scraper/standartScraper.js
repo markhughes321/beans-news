@@ -33,7 +33,7 @@ async function scrape() {
         const $item = $(element);
 
         const titleElement = $item.find(".blog-item__title-holder a");
-        const title = titleElement.find("span").text().trim() || "Untitled";
+        const title = titleElement.find("span").first().text().replace(/\s+/g, " ").trim() || "Untitled";
         const relativeLink = titleElement.attr("href");
         const link = relativeLink ? `https://standartmag.com${relativeLink}` : null;
 
@@ -43,15 +43,20 @@ async function scrape() {
         const imageHeight = parseInt(imgElement.attr("height"), 10) || null;
 
         const descriptionElement = $item.find(".blog-item__excerpt");
-        const description = descriptionElement.find("p").text().trim() || "";
+        const description = descriptionElement
+          .contents()
+          .filter((_, el) => el.nodeType === 3 || (el.tagName && el.tagName.toLowerCase() !== "strong"))
+          .text()
+          .replace(/\s+/g, " ")
+          .trim() || "";
 
         if (link) {
           articles.push({
             title,
             link,
-            source: "Standart Magazine",
+            source: "standart",
             domain: "standartmag.com",
-            publishedAt: new Date(), // Enhance with actual date if available
+            publishedAt: new Date(),
             description,
             imageUrl: imageUrl ? `https:${imageUrl}` : null,
             imageWidth,

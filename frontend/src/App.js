@@ -10,8 +10,9 @@ const App = () => (
   <>
     <NavBar />
     <Routes>
-      <Route path="/" element={<AdminDashboard />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/home" element={<HomePage />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/article/edit/:uuid" element={<ArticleEdit />} />
       <Route path="/scraping" element={<ScrapingPage />} />
     </Routes>

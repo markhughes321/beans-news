@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -19,16 +19,33 @@ import { useArticles } from '../hooks/useArticles';
 import { ARTICLE_CATEGORIES } from '../utils/constants';
 import { formatDate } from '../utils/formatDate';
 
+// Utility function to format date for datetime-local input
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
-  const { fetchArticleById, updateArticleById, pushToShopify, loading, error } = useArticles();
+  const location = useLocation(); // Access location to get state
+  const { fetchArticleById, updateArticleById, pushToShopify, loadingArticle, loadingUpdate, loadingPush, error } = useArticles();
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [shopifyMessage, setShopifyMessage] = useState('');
   const [shopifyError, setShopifyError] = useState(null);
 
+  // Get the originating path and filters from location.state
+  const { from = '/home', filters = {} } = location.state || {};
+
   useEffect(() => {
+    console.log('ArticleEdit useEffect running with uuid:', uuid);
     const loadArticle = async () => {
       setIsLoading(true);
       const data = await fetchArticleById(uuid);
@@ -42,10 +59,17 @@ const ArticleEdit = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setArticle((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    if (name === 'publishedAt') {
+      setArticle((prev) => ({
+        ...prev,
+        [name]: value ? new Date(value) : null,
+      }));
+    } else {
+      setArticle((prev) => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      }));
+    }
   };
 
   const handleTagsChange = (e) => {
@@ -58,8 +82,14 @@ const ArticleEdit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await updateArticleById(uuid, article);
-    setShopifyMessage('Article saved successfully. You can now push to Shopify.');
+    try {
+      await updateArticleById(uuid, article);
+      // Redirect to the originating page with filters
+      navigate(from, { state: { filters } });
+    } catch (err) {
+      setShopifyError('Failed to save article');
+      console.error(err);
+    }
   };
 
   const handlePushToShopify = async () => {
@@ -74,7 +104,7 @@ const ArticleEdit = () => {
     }
   };
 
-  if (isLoading || loading) return <LoadingSpinner />;
+  if (isLoading || loadingArticle) return <LoadingSpinner />;
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
@@ -152,7 +182,7 @@ const ArticleEdit = () => {
           <TextField
             label="Published At"
             name="publishedAt"
-            value={article.publishedAt ? formatDate(article.publishedAt) : ''}
+            value={formatDateForInput(article.publishedAt)}
             onChange={handleChange}
             fullWidth
             variant="outlined"
@@ -194,7 +224,7 @@ const ArticleEdit = () => {
             onChange={handleChange}
             fullWidth
             variant="outlined"
-            inputProps={{ maxLength: 150 }} // Enforce 150 character limit
+            inputProps={{ maxLength: 150 }}
             helperText={`${(article.seoDescription || '').length}/150 characters`}
           />
           <TextField
@@ -255,16 +285,28 @@ const ArticleEdit = () => {
               label="Tags (comma-separated)"
             />
           </FormControl>
-          <FormControlLabel
-            control={
-              <Checkbox
-                name="sentToShopify"
-                checked={article.sentToShopify || false}
-                onChange={handleChange}
-              />
-            }
-            label="Sent to Shopify"
-          />
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="processedByAI"
+                  checked={article.processedByAI || false}
+                  onChange={handleChange}
+                />
+              }
+              label="Processed by AI"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="sentToShopify"
+                  checked={article.sentToShopify || false}
+                  onChange={handleChange}
+                />
+              }
+              label="Sent to Shopify"
+            />
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Created At"
@@ -282,14 +324,14 @@ const ArticleEdit = () => {
             />
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button type="submit" variant="contained" color="primary">
+            <Button type="submit" variant="contained" color="primary" disabled={loadingUpdate}>
               Save
             </Button>
             <Button
               variant="contained"
               color="secondary"
               onClick={handlePushToShopify}
-              disabled={loading}
+              disabled={loadingPush}
             >
               Push to Shopify
             </Button>

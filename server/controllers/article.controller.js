@@ -3,7 +3,24 @@ const logger = require("../config/logger");
 
 exports.getAllArticles = async (req, res, next) => {
   try {
-    const articles = await Article.find().sort({ createdAt: -1 });
+    const { processedByAI, sentToShopify } = req.query;
+    const query = {};
+
+    if (processedByAI !== undefined) {
+      const isProcessedByAI = processedByAI === 'true';
+      if (isProcessedByAI) {
+        query.processedByAI = true;
+      } else {
+        // Match both processedByAI: false and documents where processedByAI is null/undefined
+        query.processedByAI = { $in: [false, null, undefined] };
+      }
+    }
+    if (sentToShopify !== undefined) {
+      query.sentToShopify = sentToShopify === 'true';
+    }
+
+    console.log('Query:', query); // Debug log
+    const articles = await Article.find(query).sort({ createdAt: -1 });
     res.json(articles);
   } catch (err) {
     logger.error("Error fetching articles", { error: err });

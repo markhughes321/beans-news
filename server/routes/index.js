@@ -13,6 +13,9 @@ router.delete("/articles/:uuid", articleController.deleteArticle);
 // Manual scraping
 router.post("/system/scrape", systemController.triggerScrape);
 
+// Manual AI processing
+router.post("/system/process-ai", systemController.triggerAIProcessing);
+
 // Manually send new articles to Shopify
 router.post("/system/publish-shopify", systemController.triggerShopifyPublish);
 
