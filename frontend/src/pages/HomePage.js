@@ -1,6 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom'; // Add useLocation
-import { Box, Typography, FormControlLabel, Checkbox } from '@mui/material';
+import { useLocation } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  FormControlLabel,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import ArticleCard from '../components/common/ArticleCard';
 import CategoryBar from '../components/common/CategoryBar';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -8,12 +17,12 @@ import { useArticles } from '../hooks/useArticles';
 import { CATEGORIES } from '../utils/constants';
 
 const HomePage = () => {
-  const location = useLocation(); // Access location to get state
+  const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [filterAIProcessed, setFilterAIProcessed] = useState(undefined);
   const [filterSentToShopify, setFilterSentToShopify] = useState(undefined);
+  const [selectedSource, setSelectedSource] = useState('');
 
-  // Apply filters from location.state if present
   useEffect(() => {
     const { filters } = location.state || {};
     if (filters) {
@@ -26,17 +35,18 @@ const HomePage = () => {
     () => ({
       processedByAI: filterAIProcessed,
       sentToShopify: filterSentToShopify,
+      source: selectedSource || undefined,
     }),
-    [filterAIProcessed, filterSentToShopify]
+    [filterAIProcessed, filterSentToShopify, selectedSource]
   );
 
   const { articles, loadingArticles, error } = useArticles(filters);
 
-  console.log('Fetched articles:', articles);
-
   const filteredArticles = selectedCategory
     ? articles.filter((a) => a.category === selectedCategory)
     : articles;
+
+  const sources = useMemo(() => [...new Set(articles.map((a) => a.source))], [articles]);
 
   const handleSelectCategory = (category) => {
     setSelectedCategory(category === selectedCategory ? null : category);
@@ -58,6 +68,10 @@ const HomePage = () => {
     });
   };
 
+  const handleSourceChange = (event) => {
+    setSelectedSource(event.target.value);
+  };
+
   const getCheckboxIcon = (value) => {
     if (value === undefined) return '-';
     return value ? '✓' : '✗';
@@ -68,12 +82,15 @@ const HomePage = () => {
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Total Articles: {filteredArticles.length}
+      </Typography>
       <CategoryBar
         categories={CATEGORIES}
         onSelectCategory={handleSelectCategory}
         selectedCategory={selectedCategory}
       />
-      <Box sx={{ display: 'flex', gap: 2, my: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, my: 2, alignItems: 'center' }}>
         <FormControlLabel
           control={
             <Checkbox
@@ -100,6 +117,21 @@ const HomePage = () => {
           }
           label="Sent to Shopify"
         />
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel>Source</InputLabel>
+          <Select
+            value={selectedSource}
+            onChange={handleSourceChange}
+            label="Source"
+          >
+            <MenuItem value="">All Sources</MenuItem>
+            {sources.map((source) => (
+              <MenuItem key={source} value={source}>
+                {source}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
       <Box
         sx={{
@@ -120,7 +152,7 @@ const HomePage = () => {
           ))
         ) : (
           <Typography sx={{ textAlign: 'center', color: 'text.secondary', mt: 3 }}>
-            {selectedCategory || filterAIProcessed !== undefined || filterSentToShopify !== undefined
+            {selectedCategory || filterAIProcessed !== undefined || filterSentToShopify !== undefined || selectedSource
               ? 'No articles found for this category or filter.'
               : 'No articles available. Try scraping some articles from the Scraping page.'}
           </Typography>

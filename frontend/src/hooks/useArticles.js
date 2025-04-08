@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getArticles, getArticle, updateArticle, deleteArticle, pushArticleToShopify } from '../services/api';
 
-export const useArticles = (filters = null) => { // Change default to null
+export const useArticles = (filters = null) => {
   const [articles, setArticles] = useState([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [loadingArticle, setLoadingArticle] = useState(false);
@@ -30,9 +30,7 @@ export const useArticles = (filters = null) => { // Change default to null
     setError(null);
     try {
       const data = await getArticle(uuid);
-      if (!data) {
-        throw new Error('Article not found');
-      }
+      if (!data) throw new Error('Article not found');
       return data;
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch article';
@@ -79,6 +77,47 @@ export const useArticles = (filters = null) => { // Change default to null
     }
   };
 
+  const bulkDeleteArticles = async (uuids) => {
+    setLoadingUpdate(true);
+    setError(null);
+    try {
+      await Promise.all(uuids.map((uuid) => deleteArticle(uuid)));
+      setArticles((prev) => prev.filter((article) => !uuids.includes(article.uuid)));
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to bulk delete articles';
+      setError(errorMessage);
+      console.error('Error bulk deleting articles:', err);
+      throw err;
+    } finally {
+      setLoadingUpdate(false);
+    }
+  };
+
+  const bulkEditArticles = async (uuids, field, value) => {
+    setLoadingUpdate(true);
+    setError(null);
+    try {
+      const updates = uuids.map((uuid) =>
+        updateArticle(uuid, { [field]: value })
+      );
+      const updatedArticles = await Promise.all(updates);
+      setArticles((prev) =>
+        prev.map((article) =>
+          uuids.includes(article.uuid)
+            ? updatedArticles.find((a) => a.uuid === article.uuid) || article
+            : article
+        )
+      );
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to bulk edit articles';
+      setError(errorMessage);
+      console.error('Error bulk editing articles:', err);
+      throw err;
+    } finally {
+      setLoadingUpdate(false);
+    }
+  };
+
   const pushToShopify = async (uuid) => {
     setLoadingPush(true);
     setError(null);
@@ -96,7 +135,6 @@ export const useArticles = (filters = null) => { // Change default to null
   };
 
   useEffect(() => {
-    // Only fetch articles if filters are explicitly provided
     if (filters !== null) {
       fetchArticles(filters);
       prevFiltersRef.current = filters;
@@ -114,6 +152,8 @@ export const useArticles = (filters = null) => { // Change default to null
     fetchArticleById,
     updateArticleById,
     deleteArticleById,
+    bulkDeleteArticles,
+    bulkEditArticles,
     pushToShopify,
   };
 };

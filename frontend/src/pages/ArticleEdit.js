@@ -19,7 +19,6 @@ import { useArticles } from '../hooks/useArticles';
 import { ARTICLE_CATEGORIES } from '../utils/constants';
 import { formatDate } from '../utils/formatDate';
 
-// Utility function to format date for datetime-local input
 const formatDateForInput = (date) => {
   if (!date) return '';
   const d = new Date(date);
@@ -34,24 +33,20 @@ const formatDateForInput = (date) => {
 const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
-  const location = useLocation(); // Access location to get state
+  const location = useLocation();
   const { fetchArticleById, updateArticleById, pushToShopify, loadingArticle, loadingUpdate, loadingPush, error } = useArticles();
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [shopifyMessage, setShopifyMessage] = useState('');
   const [shopifyError, setShopifyError] = useState(null);
 
-  // Get the originating path and filters from location.state
   const { from = '/home', filters = {} } = location.state || {};
 
   useEffect(() => {
-    console.log('ArticleEdit useEffect running with uuid:', uuid);
     const loadArticle = async () => {
       setIsLoading(true);
       const data = await fetchArticleById(uuid);
-      if (data) {
-        setArticle(data);
-      }
+      if (data) setArticle(data);
       setIsLoading(false);
     };
     loadArticle();
@@ -84,7 +79,6 @@ const ArticleEdit = () => {
     e.preventDefault();
     try {
       await updateArticleById(uuid, article);
-      // Redirect to the originating page with filters
       navigate(from, { state: { filters } });
     } catch (err) {
       setShopifyError('Failed to save article');
@@ -285,6 +279,15 @@ const ArticleEdit = () => {
               label="Tags (comma-separated)"
             />
           </FormControl>
+          <TextField
+            label="Shopify Metaobject ID"
+            name="shopifyMetaobjectId"
+            value={article.shopifyMetaobjectId || ''}
+            onChange={handleChange}
+            fullWidth
+            variant="outlined"
+            InputProps={{ readOnly: true }} // Make it read-only as it’s managed by Shopify
+          />
           <Box sx={{ display: 'flex', gap: 2 }}>
             <FormControlLabel
               control={
