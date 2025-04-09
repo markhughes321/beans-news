@@ -1,10 +1,9 @@
-// File: ./server/controllers/article.controller.js
 const Article = require("../models/Article");
 const logger = require("../config/logger");
 
 exports.getAllArticles = async (req, res, next) => {
   try {
-    const { moderationStatus, source } = req.query;
+    const { moderationStatus, source, search } = req.query;
     const query = {};
 
     if (moderationStatus) {
@@ -14,7 +13,6 @@ exports.getAllArticles = async (req, res, next) => {
       } catch (e) {
         parsedStatus = moderationStatus; // Fallback to raw value if parsing fails
       }
-
       if (Array.isArray(parsedStatus)) {
         query.moderationStatus = { $in: parsedStatus };
       } else if (typeof parsedStatus === "object" && parsedStatus !== null) {
@@ -26,6 +24,14 @@ exports.getAllArticles = async (req, res, next) => {
     }
 
     if (source) query.source = source;
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } }, // Case-insensitive search on title
+        { description: { $regex: search, $options: "i" } }, // Case-insensitive search on description
+        { improvedDescription: { $regex: search, $options: "i" } }, // Case-insensitive search on improvedDescription
+      ];
+    }
 
     const articles = await Article.find(query).sort({ publishedAt: -1 });
     res.json(articles);

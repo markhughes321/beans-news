@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getArticles, getArticle, updateArticle, pushArticleToShopify, editArticleOnShopify, bulkEditArticles as apiBulkEditArticles } from "../services/api";
+import { getArticles, getArticle, updateArticle, pushArticleToShopify, editArticleOnShopify as apiEditArticleOnShopify, bulkEditArticles as apiBulkEditArticles } from "../services/api";
 
 export const useArticles = (initialFilters = null) => {
   const [articles, setArticles] = useState([]);
@@ -16,10 +16,13 @@ export const useArticles = (initialFilters = null) => {
     try {
       const params = {};
       if (fetchFilters?.moderationStatus) {
-        params.moderationStatus = JSON.stringify(fetchFilters.moderationStatus); // Stringify object for query
+        params.moderationStatus = JSON.stringify(fetchFilters.moderationStatus);
       }
       if (fetchFilters?.source) {
         params.source = fetchFilters.source;
+      }
+      if (fetchFilters?.search) {
+        params.search = fetchFilters.search;
       }
       const data = await getArticles(params);
       setArticles(data);
@@ -108,14 +111,11 @@ export const useArticles = (initialFilters = null) => {
     }
   };
 
-  const editArticleOnShopify = async (uuid, data) => {
+  const handleEditArticleOnShopify = useCallback(async (uuid, data) => {
     setLoadingPush(true);
     setError(null);
     try {
-      const result = await editArticleOnShopify(uuid, data);
-      setArticles((prev) =>
-        prev.map((article) => (article.uuid === uuid ? { ...article, ...data } : article))
-      );
+      const result = await apiEditArticleOnShopify(uuid, data); // Use renamed import
       return result;
     } catch (err) {
       const errorMessage = err.response?.data?.error || "Failed to edit article on Shopify";
@@ -125,12 +125,14 @@ export const useArticles = (initialFilters = null) => {
     } finally {
       setLoadingPush(false);
     }
-  };
+  }, []);
 
-  // Fetch articles only on mount
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    if (JSON.stringify(prevFiltersRef.current) !== JSON.stringify(initialFilters)) {
+      fetchArticles();
+      prevFiltersRef.current = initialFilters;
+    }
+  }, [fetchArticles, initialFilters]);
 
   return {
     articles,
@@ -144,6 +146,6 @@ export const useArticles = (initialFilters = null) => {
     updateArticleById,
     bulkEditArticles,
     pushToShopify,
-    editArticleOnShopify,
+    editArticleOnShopify: handleEditArticleOnShopify, // Export renamed function
   };
 };

@@ -3,17 +3,22 @@ const logger = require("../config/logger");
 const Article = require("../models/Article");
 const SHOPIFY_API_URL = "https://b4cd1f-0d.myshopify.com/admin/api/2023-04/graphql.json";
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+
 if (!SHOPIFY_ACCESS_TOKEN) {
   logger.error("SHOPIFY_ACCESS_TOKEN is not defined in environment variables");
   throw new Error("SHOPIFY_ACCESS_TOKEN is required");
 }
+
+// ./server/services/shopifyService.js
 async function updateArticleInShopify(article) {
   logger.debug("Updating article in Shopify", { link: article.link, shopifyId: article.shopifyMetaobjectId });
-  if (!article.shopifyMetaobjectId) {
-    throw new Error(`No Shopify metaobject ID found for article: ${article.link}`);
+
+  if (!article.shopifyMetaobjectId || typeof article.shopifyMetaobjectId !== "string" || !article.shopifyMetaobjectId.startsWith("gid://shopify/Metaobject/")) {
+    logger.error("Invalid or missing Shopify metaobject ID", { uuid: article.uuid, shopifyMetaobjectId: article.shopifyMetaobjectId });
+    throw new Error(`Invalid or missing Shopify metaobject ID for article: ${article.link}`);
   }
-  const input = {
-    id: article.shopifyMetaobjectId,
+
+  const metaobject = {
     fields: [
       { key: "uuid", value: article.uuid || "" },
       { key: "publishdate", value: article.publishedAt ? article.publishedAt.toISOString() : new Date().toISOString() },
@@ -30,25 +35,72 @@ async function updateArticleInShopify(article) {
       { key: "seodescription", value: article.seoDescription || "" },
     ],
   };
+
   const mutation = `
-    mutation MetaobjectUpdate($input: MetaobjectUpdateInput!) {
-      metaobjectUpdate(metaobject: $input) {
-        metaobject { id handle type }
-        userErrors { field message }
+    mutation UpdateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+      metaobjectUpdate(id: $id, metaobject: $metaobject) {
+        metaobject {
+          id
+          handle
+          type
+        }
+        userErrors {
+          field
+          message
+          code
+        }
       }
     }
   `;
-  const response = await axios.post(
-    SHOPIFY_API_URL,
-    { query: mutation, variables: { input } },
-    { headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN, "Content-Type": "application/json" } }
-  );
-  const { data } = response;
-  if (data.errors) throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-  const { metaobject, userErrors } = data.data.metaobjectUpdate;
-  if (userErrors && userErrors.length > 0) throw new Error(`Shopify user errors: ${JSON.stringify(userErrors)}`);
-  if (!metaobject) throw new Error("No metaobject returned from Shopify after update");
-  logger.info("Successfully updated article in Shopify", { link: article.link, shopifyId: metaobject.id });
+
+  const requestPayload = {
+    query: mutation,
+    variables: {
+      id: article.shopifyMetaobjectId, // Separate id argument
+      metaobject,                     // Fields go here
+    },
+  };
+
+  logger.debug("GraphQL request payload to Shopify", { payload: JSON.stringify(requestPayload, null, 2) });
+
+  try {
+    const response = await axios.post(
+      SHOPIFY_API_URL,
+      requestPayload,
+      {
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const { data } = response;
+    if (data.errors) {
+      logger.error("GraphQL response errors", { errors: data.errors });
+      throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+    }
+
+    const { metaobject: updatedMetaobject, userErrors } = data.data.metaobjectUpdate;
+    if (userErrors && userErrors.length > 0) {
+      logger.error("Shopify user errors", { userErrors });
+      throw new Error(`Shopify user errors: ${JSON.stringify(userErrors)}`);
+    }
+    if (!updatedMetaobject) {
+      logger.error("No metaobject returned", { response: data.data });
+      throw new Error("No metaobject returned from Shopify after update");
+    }
+
+    logger.info("Successfully updated article in Shopify", { link: article.link, shopifyId: updatedMetaobject.id });
+  } catch (error) {
+    logger.error("Failed to update article in Shopify", {
+      link: article.link,
+      shopifyId: article.shopifyMetaobjectId,
+      error: error.message,
+      response: error.response?.data,
+    });
+    throw error;
+  }
 }
 async function sendArticlesToShopify(sourceName) {
   logger.info("Starting Shopify publish process", { source: sourceName });

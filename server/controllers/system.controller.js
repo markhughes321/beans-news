@@ -73,9 +73,11 @@ async function pushArticleToShopify(req, res, next) {
     if (article.moderationStatus !== "aiProcessed" && article.moderationStatus !== "sentToShopify") {
       return res.status(400).json({ error: "Article must be AI processed before sending to Shopify" });
     }
+
     const handleBase = article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-");
     const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
     const handle = `${handleBase}-${dateStr}`;
+
     const fields = [
       { key: "uuid", value: article.uuid || "" },
       { key: "publishdate", value: article.publishedAt ? article.publishedAt.toISOString() : new Date().toISOString() },
@@ -91,17 +93,21 @@ async function pushArticleToShopify(req, res, next) {
       { key: "seotitle", value: article.seoTitle || `${article.title} | BEANS News` },
       { key: "seodescription", value: article.seoDescription || "" },
     ];
+
     let mutation, variables;
     if (article.shopifyMetaobjectId) {
       mutation = `
-        mutation MetaobjectUpdate($input: MetaobjectUpdateInput!) {
-          metaobjectUpdate(metaobject: $input) {
+        mutation UpdateMetaobject($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+          metaobjectUpdate(id: $id, metaobject: $metaobject) {
             metaobject { id handle type }
             userErrors { field message }
           }
         }
       `;
-      variables = { input: { id: article.shopifyMetaobjectId, fields } };
+      variables = {
+        id: article.shopifyMetaobjectId,
+        metaobject: { fields },
+      };
     } else {
       mutation = `
         mutation MetaobjectCreate($input: MetaobjectCreateInput!) {
@@ -115,17 +121,21 @@ async function pushArticleToShopify(req, res, next) {
         input: { handle, type: "news_articles", capabilities: { publishable: { status: "ACTIVE" } }, fields },
       };
     }
+
     const response = await axios.post(
       SHOPIFY_API_URL,
       { query: mutation, variables },
       { headers: { "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN, "Content-Type": "application/json" } }
     );
+
     const { data } = response;
     if (data.errors) throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
     const resultKey = article.shopifyMetaobjectId ? "metaobjectUpdate" : "metaobjectCreate";
     const { metaobject, userErrors } = data.data[resultKey];
+
     if (userErrors && userErrors.length > 0) throw new Error(`Shopify user errors: ${JSON.stringify(userErrors)}`);
     if (!metaobject) throw new Error("No metaobject returned from Shopify");
+
     await Article.updateOne(
       { _id: article._id },
       { shopifyMetaobjectId: metaobject.id, moderationStatus: "sentToShopify" }
@@ -139,16 +149,23 @@ async function editArticleOnShopify(req, res, next) {
   const { uuid } = req.params;
   const updatedArticle = req.body;
   logger.info("Editing article on Shopify", { uuid });
+
   try {
     const article = await Article.findOne({ uuid }).lean();
     if (!article) return res.status(404).json({ error: "Article not found" });
     if (article.moderationStatus !== "sentToShopify") {
       return res.status(400).json({ error: "Article must be sent to Shopify first" });
     }
+    if (!article.shopifyMetaobjectId) {
+      logger.error("Article has no Shopify metaobject ID despite being sentToShopify", { uuid });
+      return res.status(400).json({ error: "Article is missing Shopify metaobject ID" });
+    }
+
     const updated = await Article.findOneAndUpdate({ uuid }, updatedArticle, { new: true });
     await updateArticleInShopify(updated);
     res.json({ message: `Article updated in Shopify: ${updated.link}`, article: updated });
   } catch (err) {
+    logger.error("Error in editArticleOnShopify", { uuid, error: err.message });
     next(err);
   }
 }

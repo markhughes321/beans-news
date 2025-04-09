@@ -1,6 +1,16 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, Typography, FormControlLabel, Checkbox, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import {
+  Box,
+  Typography,
+  FormControlLabel,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+} from "@mui/material";
 import ArticleCard from "../components/common/ArticleCard";
 import CategoryBar from "../components/common/CategoryBar";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -15,6 +25,9 @@ const HomePage = () => {
   const [filterAIProcessed, setFilterAIProcessed] = useState(undefined);
   const [filterSentToShopify, setFilterSentToShopify] = useState(undefined);
   const [selectedSource, setSelectedSource] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Input value
+  const [appliedSearch, setAppliedSearch] = useState(""); // Search term applied to filters
+
   const { articles, loadingArticles, error, fetchArticles, updateArticleById } = useArticles();
 
   useEffect(() => {
@@ -44,24 +57,42 @@ const HomePage = () => {
     return {
       moderationStatus: Object.keys(moderationStatusFilter).length > 0 ? moderationStatusFilter : undefined,
       source: selectedSource || undefined,
+      search: appliedSearch || undefined, // Use appliedSearch instead of searchTerm
     };
-  }, [filterScraped, filterRejected, filterAIProcessed, filterSentToShopify, selectedSource]);
+  }, [filterScraped, filterRejected, filterAIProcessed, filterSentToShopify, selectedSource, appliedSearch]);
 
-  // Fetch articles when filters change
+  // Fetch articles only when filters change (excluding searchTerm)
   useEffect(() => {
     fetchArticles(filters);
   }, [fetchArticles, filters]);
 
-  const filteredArticles = selectedCategory ? articles.filter((a) => a.category === selectedCategory) : articles;
+  // Filter articles locally based on category
+  const filteredArticles = useMemo(() => {
+    let result = articles;
+    if (selectedCategory) {
+      result = result.filter((a) => a.category === selectedCategory);
+    }
+    return result;
+  }, [articles, selectedCategory]);
+
   const sources = useMemo(() => [...new Set(articles.map((a) => a.source))], [articles]);
 
   const handleSelectCategory = (category) => {
     setSelectedCategory(category === selectedCategory ? null : category);
   };
 
-  const toggleFilter = (setter) => () => setter((prev) => (prev === undefined ? true : prev === true ? false : undefined));
+  const toggleFilter = (setter) => () =>
+    setter((prev) => (prev === undefined ? true : prev === true ? false : undefined));
 
   const handleSourceChange = (event) => setSelectedSource(event.target.value);
+
+  const handleSearchChange = (event) => setSearchTerm(event.target.value);
+
+  const handleSearchSubmit = (event) => {
+    if (event.key === "Enter") {
+      setAppliedSearch(searchTerm); // Apply the search term only on Enter
+    }
+  };
 
   const handleRejectArticle = async (uuid) => {
     try {
@@ -79,31 +110,83 @@ const HomePage = () => {
   return (
     <Box sx={{ maxWidth: 1400, mx: "auto", p: 3 }}>
       <Box sx={{ position: "sticky", top: 64, zIndex: 1000, backgroundColor: "background.paper", py: 1 }}>
-        <CategoryBar categories={CATEGORIES} onSelectCategory={handleSelectCategory} selectedCategory={selectedCategory} />
+        <CategoryBar
+          categories={CATEGORIES}
+          onSelectCategory={handleSelectCategory}
+          selectedCategory={selectedCategory}
+        />
       </Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, my: 2 }}>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+          <TextField
+            label="Search Articles"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchSubmit} // Trigger search on Enter
+            variant="outlined"
+            size="small"
+            placeholder="e.g., Drinks, brew guides"
+            sx={{ minWidth: 200 }}
+          />
           <FormControlLabel
-            control={<Checkbox checked={filterScraped !== undefined} indeterminate={filterScraped === false} onChange={toggleFilter(setFilterScraped)} icon={<span>{getCheckboxIcon(filterScraped)}</span>} checkedIcon={<span>{getCheckboxIcon(filterScraped)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterScraped)}</span>} />}
+            control={
+              <Checkbox
+                checked={filterScraped !== undefined}
+                indeterminate={filterScraped === false}
+                onChange={toggleFilter(setFilterScraped)}
+                icon={<span>{getCheckboxIcon(filterScraped)}</span>}
+                checkedIcon={<span>{getCheckboxIcon(filterScraped)}</span>}
+                indeterminateIcon={<span>{getCheckboxIcon(filterScraped)}</span>}
+              />
+            }
             label="Scraped"
           />
           <FormControlLabel
-            control={<Checkbox checked={filterRejected !== undefined} indeterminate={filterRejected === false} onChange={toggleFilter(setFilterRejected)} icon={<span>{getCheckboxIcon(filterRejected)}</span>} checkedIcon={<span>{getCheckboxIcon(filterRejected)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterRejected)}</span>} />}
+            control={
+              <Checkbox
+                checked={filterRejected !== undefined}
+                indeterminate={filterRejected === false}
+                onChange={toggleFilter(setFilterRejected)}
+                icon={<span>{getCheckboxIcon(filterRejected)}</span>}
+                checkedIcon={<span>{getCheckboxIcon(filterRejected)}</span>}
+                indeterminateIcon={<span>{getCheckboxIcon(filterRejected)}</span>}
+              />
+            }
             label="Rejected"
           />
           <FormControlLabel
-            control={<Checkbox checked={filterAIProcessed !== undefined} indeterminate={filterAIProcessed === false} onChange={toggleFilter(setFilterAIProcessed)} icon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} checkedIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>} />}
+            control={
+              <Checkbox
+                checked={filterAIProcessed !== undefined}
+                indeterminate={filterAIProcessed === false}
+                onChange={toggleFilter(setFilterAIProcessed)}
+                icon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
+                checkedIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
+                indeterminateIcon={<span>{getCheckboxIcon(filterAIProcessed)}</span>}
+              />
+            }
             label="AI Processed"
           />
           <FormControlLabel
-            control={<Checkbox checked={filterSentToShopify !== undefined} indeterminate={filterSentToShopify === false} onChange={toggleFilter(setFilterSentToShopify)} icon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} checkedIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} indeterminateIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>} />}
+            control={
+              <Checkbox
+                checked={filterSentToShopify !== undefined}
+                indeterminate={filterSentToShopify === false}
+                onChange={toggleFilter(setFilterSentToShopify)}
+                icon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
+                checkedIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
+                indeterminateIcon={<span>{getCheckboxIcon(filterSentToShopify)}</span>}
+              />
+            }
             label="Sent to Shopify"
           />
           <FormControl sx={{ minWidth: 120 }}>
             <InputLabel>Source</InputLabel>
             <Select value={selectedSource} onChange={handleSourceChange} label="Source">
               <MenuItem value="">All Sources</MenuItem>
-              {sources.map((source) => <MenuItem key={source} value={source}>{source}</MenuItem>)}
+              {sources.map((source) => (
+                <MenuItem key={source} value={source}>{source}</MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Box>
@@ -112,11 +195,25 @@ const HomePage = () => {
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 3, py: 3 }}>
         {filteredArticles.length > 0 ? (
           filteredArticles.map((article) => (
-            <ArticleCard key={article.uuid} article={article} filters={filters} from="/home" onReject={handleRejectArticle} />
+            <ArticleCard
+              key={article.uuid}
+              article={article}
+              filters={filters}
+              from="/home"
+              onReject={handleRejectArticle}
+            />
           ))
         ) : (
           <Typography sx={{ textAlign: "center", color: "text.secondary", mt: 3 }}>
-            {selectedCategory || filterScraped !== undefined || filterRejected !== undefined || filterAIProcessed !== undefined || filterSentToShopify !== undefined || selectedSource ? "No articles found for this filter." : "No articles available. Try scraping some articles from the Scraping page."}
+            {selectedCategory ||
+            filterScraped !== undefined ||
+            filterRejected !== undefined ||
+            filterAIProcessed !== undefined ||
+            filterSentToShopify !== undefined ||
+            selectedSource ||
+            appliedSearch
+              ? "No articles found for this filter or search."
+              : "No articles available. Try scraping some articles from the Scraping page."}
           </Typography>
         )}
       </Box>
