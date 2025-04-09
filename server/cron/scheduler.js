@@ -1,37 +1,30 @@
 const cron = require("node-cron");
-const fs = require("fs");
-const path = require("path");
 const logger = require("../config/logger");
+const Scraper = require("../models/Scraper");
 const { scrapeSource } = require("../services/scraper");
 const { sendArticlesToShopify } = require("../services/shopifyService");
 
 function initCronJobs() {
-  const configPath = path.join(__dirname, "../config/sources.json");
-  if (!fs.existsSync(configPath)) {
-    logger.warn("No sources.json found. No cron jobs will be scheduled.");
-    return;
-  }
-
-  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-  const { sources = [], publishShopifySchedule } = config;
-
-  sources.forEach((source) => {
-    if (!source.cronSchedule) {
-      logger.warn("No cronSchedule specified, skipping", { source: source.name });
-      return;
-    }
-    logger.info("Scheduling cron job for source", { source: source.name, schedule: source.cronSchedule });
-    cron.schedule(source.cronSchedule, async () => {
-      logger.info("CRON: Starting scrape", { source: source.name });
-      try {
-        const newCount = await scrapeSource(source);
-        logger.info("CRON: Scrape completed", { source: source.name, newArticles: newCount });
-      } catch (err) {
-        logger.error("CRON: Scrape error", { source: source.name, error: err.message });
+  Scraper.find().then((sources) => {
+    sources.forEach((source) => {
+      if (!source.cronSchedule) {
+        logger.warn("No cronSchedule specified, skipping", { source: source.name });
+        return;
       }
+      logger.info("Scheduling cron job for source", { source: source.name, schedule: source.cronSchedule });
+      cron.schedule(source.cronSchedule, async () => {
+        logger.info("CRON: Starting scrape", { source: source.name });
+        try {
+          const { newCount } = await scrapeSource(source);
+          logger.info("CRON: Scrape completed", { source: source.name, newArticles: newCount });
+        } catch (err) {
+          logger.error("CRON: Scrape error", { source: source.name, error: err.message });
+        }
+      });
     });
   });
 
+  const publishShopifySchedule = "0 8 * * *"; // Hardcoded for now, could be moved to config
   if (publishShopifySchedule) {
     logger.info("Scheduling Shopify publish", { schedule: publishShopifySchedule });
     cron.schedule(publishShopifySchedule, async () => {
@@ -44,7 +37,7 @@ function initCronJobs() {
       }
     });
   } else {
-    logger.warn("No publishShopifySchedule set in sources.json");
+    logger.warn("No publishShopifySchedule set");
   }
 }
 

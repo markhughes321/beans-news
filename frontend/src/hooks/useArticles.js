@@ -1,17 +1,16 @@
-// File: ./frontend/src/hooks/useArticles.js
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getArticles, getArticle, updateArticle, pushArticleToShopify, editArticleOnShopify, bulkEditArticles as apiBulkEditArticles } from "../services/api";
 
-export const useArticles = (filters = null) => {
+export const useArticles = (initialFilters = null) => {
   const [articles, setArticles] = useState([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [loadingUpdate, setLoadingUpdate] = useState(false);
   const [loadingPush, setLoadingPush] = useState(false);
   const [error, setError] = useState(null);
-  const prevFiltersRef = useRef(filters);
+  const prevFiltersRef = useRef(initialFilters);
 
-  const fetchArticles = useCallback(async (fetchFilters = filters) => {
+  const fetchArticles = useCallback(async (fetchFilters = initialFilters) => {
     setLoadingArticles(true);
     setError(null);
     try {
@@ -31,7 +30,7 @@ export const useArticles = (filters = null) => {
     } finally {
       setLoadingArticles(false);
     }
-  }, [filters]);
+  }, [initialFilters]);
 
   const fetchArticleById = useCallback(async (uuid) => {
     setLoadingArticle(true);
@@ -128,12 +127,10 @@ export const useArticles = (filters = null) => {
     }
   };
 
+  // Fetch articles only on mount
   useEffect(() => {
-    if (filters !== null) {
-      fetchArticles(filters);
-      prevFiltersRef.current = filters;
-    }
-  }, [fetchArticles, filters]);
+    fetchArticles();
+  }, [fetchArticles]);
 
   return {
     articles,

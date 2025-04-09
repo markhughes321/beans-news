@@ -16,9 +16,7 @@ const CategoryBar = ({ categories, onSelectCategory, selectedCategory }) => {
         scrollButtons="auto"
         aria-label="category tabs"
         sx={{
-          '& .MuiTabs-flexContainer': {
-            justifyContent: 'center',
-          },
+          '& .MuiTabs-flexContainer': { justifyContent: 'center' },
         }}
       >
         {categories.map((category) => (
@@ -30,9 +28,7 @@ const CategoryBar = ({ categories, onSelectCategory, selectedCategory }) => {
               textTransform: 'uppercase',
               fontWeight: 600,
               color: 'text.secondary',
-              '&.Mui-selected': {
-                color: 'primary.main',
-              },
+              '&.Mui-selected': { color: 'primary.main' },
             }}
           />
         ))}

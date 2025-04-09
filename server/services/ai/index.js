@@ -9,7 +9,17 @@ const articleSchema = {
   properties: {
     category: {
       type: "string",
-      enum: ["Sustainability", "Design", "Origin", "Culture", "Market", "Innovation", "People", "Competition"],
+      enum: [
+        "Sustainability",
+        "Design",
+        "Origin",
+        "Culture",
+        "Market",
+        "Innovation",
+        "People",
+        "Competition",
+        "Recipes",
+      ],
       description: "The category of the article, must be one of the specified values.",
     },
     geotag: {
@@ -39,15 +49,12 @@ async function processArticleAI({ title, description, imageUrl, moderationStatus
     logger.info("Skipping AI processing for rejected article", { title });
     return null;
   }
-
   logger.debug("Starting AI processing for article", { title });
-
   try {
     const formattedPrompt = articleProcessingPrompt
       .replace("{{title}}", title)
       .replace("{{description}}", description || "No description provided.")
       .replace("{{imageUrl}}", imageUrl || "No image provided.");
-
     const response = await openai.chat.completions.create({
       model: "gpt-4o-2024-08-06",
       messages: [
@@ -64,22 +71,17 @@ async function processArticleAI({ title, description, imageUrl, moderationStatus
         },
       },
     });
-
     const result = JSON.parse(response.choices[0].message.content);
     logger.debug("Received AI response", { title, result });
-
     if (response.choices[0].message.refusal) {
       logger.warn("OpenAI refused to process the article", { title, refusal: response.choices[0].message.refusal });
       throw new Error(`OpenAI refused to process the article: ${response.choices[0].message.refusal}`);
     }
-
     let improvedDescription = result.improvedDescription;
     if (!improvedDescription.trim().endsWith(".")) improvedDescription += ".";
-
     let seoDesc = result.seoDescription;
     if (seoDesc.length > 150) seoDesc = seoDesc.substring(0, 147) + "...";
     seoDesc = seoDesc.replace(/-/g, " ");
-
     logger.info("AI processing completed", { title, category: result.category });
     return {
       category: result.category,

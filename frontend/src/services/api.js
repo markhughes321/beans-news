@@ -1,8 +1,5 @@
 import axios from "axios";
-
-const API = axios.create({
-  baseURL: "/api",
-});
+const API = axios.create({ baseURL: "/api" });
 
 export const getArticles = async (params = {}) => {
   const res = await API.get("/articles", { params });
@@ -62,5 +59,15 @@ export const editArticleOnShopify = async (uuid, data) => {
 
 export const processSingleArticleWithAI = async (uuid) => {
   const res = await API.post(`/system/process-single-ai/${uuid}`);
+  return res.data;
+};
+
+export const getScrapers = async () => {
+  const res = await API.get("/system/scrapers");
+  return res.data.scrapers;
+};
+
+export const createScraper = async (data) => {
+  const res = await API.post("/system/scrapers", data);
   return res.data;
 };

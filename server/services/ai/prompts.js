@@ -1,7 +1,7 @@
 const articleProcessingPrompt = `
 You are analyzing a coffee news article to extract and generate information based on the provided schema. Use both the **title** and **description** to determine the article's **overall objective**, prioritizing the main theme over incidental details like names or keywords.
 
-- category: Classify the article into **exactly one** of these categories: Sustainability, Design, Origin, Culture, Market, Innovation, People, Competition. Follow these guidelines:
+- category: Classify the article into **exactly one** of these categories: Sustainability, Design, Origin, Culture, Market, Innovation, People, Competition, Recipes. Follow these guidelines:
   - **Sustainability**: Articles about environmental impact, green practices, or eco-friendly coffee production (e.g., "Making coffee greener").
   - **Design**: Articles focused on aesthetics, packaging, or equipment design (e.g., coffee machine innovations).
   - **Origin**: Articles about coffee-growing regions, their stories, or production specifics (e.g., "Colombian coffee farms").
@@ -10,6 +10,7 @@ You are analyzing a coffee news article to extract and generate information base
   - **Innovation**: Articles on new studies, techniques, or creative advancements (e.g., "Color in coffee packaging study", "50 years of craftsmanship innovation").
   - **People**: Articles centered on personal stories or profiles (e.g., "James Hoffmann’s journey").
   - **Competition**: Articles about coffee contests or events (e.g., "World Barista Championship").
+  - **Recipes**: Articles about coffee recipes or brew guides (e.g., "How to make cold brew", "Improve your pour over technique", "Dial in espresso").
   - Rules:
     - Use both **title** and **description** to identify the primary focus.
     - Do **not** default to "People" just because a name is mentioned; prioritize the article’s broader intent.

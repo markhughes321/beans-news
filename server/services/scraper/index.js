@@ -2,7 +2,9 @@ const path = require("path");
 const fs = require("fs");
 const logger = require("../../config/logger");
 const Article = require("../../models/Article");
+const Scraper = require("../../models/Scraper");
 const { processArticleAI } = require("../ai");
+
 async function scrapeSource(sourceConfig) {
   const { name, url, scraperFile } = sourceConfig;
   logger.info("Initiating scrape for source", { source: name });
@@ -57,6 +59,7 @@ async function scrapeSource(sourceConfig) {
   logger.info("Scrape completed for source", { source: name, newArticles: newCount, updatedArticles: updatedCount });
   return { newCount, updatedCount };
 }
+
 async function processArticlesWithAI(sourceName) {
   logger.info("Initiating AI processing for source", { source: sourceName });
   const articles = await Article.find({ source: sourceName, moderationStatus: "scraped" });
@@ -74,7 +77,7 @@ async function processArticlesWithAI(sourceName) {
         imageUrl: article.imageUrl,
         moderationStatus: article.moderationStatus,
       });
-      if (!aiData) continue; // Skip if rejected
+      if (!aiData) continue;
       await Article.updateOne(
         { _id: article._id },
         {
@@ -98,12 +101,12 @@ async function processArticlesWithAI(sourceName) {
   logger.info("AI processing completed", { source: sourceName, processedCount });
   return { processedCount };
 }
+
 async function scrapeSourceByName(sourceName) {
   logger.info("Manual scrape triggered", { source: sourceName });
-  const configPath = path.join(__dirname, "../../config/sources.json");
-  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-  const src = config.sources.find((s) => s.name === sourceName);
-  if (!src) throw new Error(`Source '${sourceName}' not found in sources.json`);
+  const src = await Scraper.findOne({ name: sourceName });
+  if (!src) throw new Error(`Source '${sourceName}' not found in database`);
   return await scrapeSource(src);
 }
+
 module.exports = { scrapeSource, scrapeSourceByName, processArticlesWithAI };
