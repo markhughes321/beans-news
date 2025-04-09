@@ -50,10 +50,9 @@ done
 sort -r -n "$temp_metadata" | head -n "$file_limit" | while IFS='|' read -r mod file lines readable; do
     echo "$file — $lines lines — Last modified: $readable"
 
-    # Append to combined output file
+    # Append to combined output file (remove blank lines from each file)
     echo "// File: $file" >> "$output_file"
-    cat "$file" >> "$output_file"
-    echo -e "\n\n" >> "$output_file"
+    grep -v '^[[:space:]]*$' "$file" >> "$output_file"
 done
 
 echo "------------------------------------"

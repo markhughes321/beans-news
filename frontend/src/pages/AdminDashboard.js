@@ -1,25 +1,13 @@
-// File: ./frontend/src/pages/AdminDashboard.js
-import React, { useMemo, useState } from 'react';
-import { Typography, Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import ArticlesTable from '../components/layout/ArticlesTable';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { useArticles } from '../hooks/useArticles';
+import React, { useMemo, useState } from "react";
+import { Typography, Box, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import ArticlesTable from "../components/layout/ArticlesTable";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { useArticles } from "../hooks/useArticles";
 
 const AdminDashboard = () => {
-  const [selectedSource, setSelectedSource] = useState('');
-  const filters = useMemo(() => ({
-    source: selectedSource || undefined,
-  }), [selectedSource]);
-
-  const {
-    articles,
-    loadingArticles,
-    error,
-    deleteArticleById,
-    bulkDeleteArticles,
-    bulkEditArticles,
-  } = useArticles(filters);
-
+  const [selectedSource, setSelectedSource] = useState("");
+  const filters = useMemo(() => ({ source: selectedSource || undefined }), [selectedSource]);
+  const { articles, loadingArticles, error, bulkEditArticles } = useArticles(filters);
   const sources = useMemo(() => [...new Set(articles.map((a) => a.source))], [articles]);
 
   const handleSourceChange = (event) => {
@@ -31,9 +19,7 @@ const AdminDashboard = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Admin Dashboard
-      </Typography>
+      <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
       <Box sx={{ mb: 3 }}>
         <FormControl sx={{ minWidth: 200 }}>
           <InputLabel>Source</InputLabel>
@@ -45,12 +31,7 @@ const AdminDashboard = () => {
           </Select>
         </FormControl>
       </Box>
-      <ArticlesTable
-        articles={articles}
-        onDelete={deleteArticleById}
-        onBulkDelete={bulkDeleteArticles}
-        onBulkEdit={bulkEditArticles}
-      />
+      <ArticlesTable articles={articles} onBulkEdit={bulkEditArticles} />
     </Box>
   );
 };

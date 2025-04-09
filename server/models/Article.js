@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
-
 const ArticleSchema = new mongoose.Schema(
   {
     uuid: { type: String, default: uuidv4, unique: true },
@@ -19,14 +18,15 @@ const ArticleSchema = new mongoose.Schema(
     category: { type: String, required: true, default: "Market" },
     geotag: { type: String, default: null },
     tags: [{ type: String }],
-    sentToShopify: { type: Boolean, default: false },
     shopifyMetaobjectId: { type: String, default: null },
-    processedByAI: { type: Boolean, default: false },
-    excludedFromShopify: { type: Boolean, default: false }, // New field
+    moderationStatus: {
+      type: String,
+      enum: ["scraped", "rejected", "aiProcessed", "sentToShopify"],
+      default: "scraped",
+    },
   },
   {
     timestamps: true,
   }
 );
-
 module.exports = mongoose.model("Article", ArticleSchema);

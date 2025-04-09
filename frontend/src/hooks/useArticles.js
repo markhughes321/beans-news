@@ -1,12 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  getArticles, 
-  getArticle, 
-  updateArticle, 
-  deleteArticle, 
-  pushArticleToShopify,
-  editArticleOnShopify as apiEditArticleOnShopify
-} from '../services/api';
+// File: ./frontend/src/hooks/useArticles.js
+import { useState, useEffect, useCallback, useRef } from "react";
+import { getArticles, getArticle, updateArticle, pushArticleToShopify, editArticleOnShopify, bulkEditArticles as apiBulkEditArticles } from "../services/api";
 
 export const useArticles = (filters = null) => {
   const [articles, setArticles] = useState([]);
@@ -21,12 +15,19 @@ export const useArticles = (filters = null) => {
     setLoadingArticles(true);
     setError(null);
     try {
-      const data = await getArticles(fetchFilters);
+      const params = {};
+      if (fetchFilters?.moderationStatus) {
+        params.moderationStatus = JSON.stringify(fetchFilters.moderationStatus); // Stringify object for query
+      }
+      if (fetchFilters?.source) {
+        params.source = fetchFilters.source;
+      }
+      const data = await getArticles(params);
       setArticles(data);
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to fetch articles';
+      const errorMessage = err.response?.data?.error || "Failed to fetch articles";
       setError(errorMessage);
-      console.error('Error fetching articles:', err);
+      console.error("Error fetching articles:", err);
     } finally {
       setLoadingArticles(false);
     }
@@ -37,12 +38,12 @@ export const useArticles = (filters = null) => {
     setError(null);
     try {
       const data = await getArticle(uuid);
-      if (!data) throw new Error('Article not found');
+      if (!data) throw new Error("Article not found");
       return data;
     } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch article';
+      const errorMessage = err.response?.data?.error || err.message || "Failed to fetch article";
       setError(errorMessage);
-      console.error('Error fetching article:', err);
+      console.error("Error fetching article:", err);
       return null;
     } finally {
       setLoadingArticle(false);
@@ -54,46 +55,12 @@ export const useArticles = (filters = null) => {
     setError(null);
     try {
       const updated = await updateArticle(uuid, data);
-      setArticles((prev) =>
-        prev.map((article) => (article.uuid === uuid ? updated : article))
-      );
+      setArticles((prev) => prev.map((article) => (article.uuid === uuid ? updated : article)));
       return updated;
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to update article';
+      const errorMessage = err.response?.data?.error || "Failed to update article";
       setError(errorMessage);
-      console.error('Error updating article:', err);
-      throw err;
-    } finally {
-      setLoadingUpdate(false);
-    }
-  };
-
-  const deleteArticleById = async (uuid) => {
-    setLoadingUpdate(true);
-    setError(null);
-    try {
-      await deleteArticle(uuid);
-      setArticles((prev) => prev.filter((article) => article.uuid !== uuid));
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to delete article';
-      setError(errorMessage);
-      console.error('Error deleting article:', err);
-      throw err;
-    } finally {
-      setLoadingUpdate(false);
-    }
-  };
-
-  const bulkDeleteArticles = async (uuids) => {
-    setLoadingUpdate(true);
-    setError(null);
-    try {
-      await Promise.all(uuids.map((uuid) => deleteArticle(uuid)));
-      setArticles((prev) => prev.filter((article) => !uuids.includes(article.uuid)));
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to bulk delete articles';
-      setError(errorMessage);
-      console.error('Error bulk deleting articles:', err);
+      console.error("Error updating article:", err);
       throw err;
     } finally {
       setLoadingUpdate(false);
@@ -104,19 +71,17 @@ export const useArticles = (filters = null) => {
     setLoadingUpdate(true);
     setError(null);
     try {
-      const updates = uuids.map((uuid) => updateArticle(uuid, { [field]: value }));
-      const updatedArticles = await Promise.all(updates);
+      const updates = { [field]: value };
+      await apiBulkEditArticles(uuids, updates);
       setArticles((prev) =>
         prev.map((article) =>
-          uuids.includes(article.uuid)
-            ? updatedArticles.find((a) => a.uuid === article.uuid) || article
-            : article
+          uuids.includes(article.uuid) ? { ...article, [field]: value } : article
         )
       );
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to bulk edit articles';
+      const errorMessage = err.response?.data?.error || "Failed to bulk edit articles";
       setError(errorMessage);
-      console.error('Error bulk editing articles:', err);
+      console.error("Error bulk editing articles:", err);
       throw err;
     } finally {
       setLoadingUpdate(false);
@@ -130,14 +95,14 @@ export const useArticles = (filters = null) => {
       const result = await pushArticleToShopify(uuid);
       setArticles((prev) =>
         prev.map((article) =>
-          article.uuid === uuid ? { ...article, sentToShopify: true } : article
+          article.uuid === uuid ? { ...article, moderationStatus: "sentToShopify" } : article
         )
       );
       return result;
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to push article to Shopify';
+      const errorMessage = err.response?.data?.error || "Failed to push article to Shopify";
       setError(errorMessage);
-      console.error('Error pushing article to Shopify:', err);
+      console.error("Error pushing article to Shopify:", err);
       throw err;
     } finally {
       setLoadingPush(false);
@@ -148,15 +113,15 @@ export const useArticles = (filters = null) => {
     setLoadingPush(true);
     setError(null);
     try {
-      const result = await apiEditArticleOnShopify(uuid, data);
+      const result = await editArticleOnShopify(uuid, data);
       setArticles((prev) =>
         prev.map((article) => (article.uuid === uuid ? { ...article, ...data } : article))
       );
       return result;
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to edit article on Shopify';
+      const errorMessage = err.response?.data?.error || "Failed to edit article on Shopify";
       setError(errorMessage);
-      console.error('Error editing article on Shopify:', err);
+      console.error("Error editing article on Shopify:", err);
       throw err;
     } finally {
       setLoadingPush(false);
@@ -180,8 +145,6 @@ export const useArticles = (filters = null) => {
     fetchArticles,
     fetchArticleById,
     updateArticleById,
-    deleteArticleById,
-    bulkDeleteArticles,
     bulkEditArticles,
     pushToShopify,
     editArticleOnShopify,

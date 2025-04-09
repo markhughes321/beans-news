@@ -1,48 +1,22 @@
-import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  Link,
-  Checkbox,
-  Box,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import SmartToyIcon from '@mui/icons-material/SmartToy'; // Icon for processedByAI
-import StoreIcon from '@mui/icons-material/Store'; // Icon for sentToShopify
-import { formatDate } from '../../utils/formatDate';
+import React, { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Link, Checkbox, Box } from "@mui/material";
+import { formatDate } from "../../utils/formatDate";
 
-const ArticlesTable = ({ articles, onDelete, onBulkDelete, onBulkEdit }) => {
+const ArticlesTable = ({ articles, onBulkEdit }) => {
   const [selected, setSelected] = useState([]);
 
   const handleSelect = (uuid) => {
-    setSelected((prev) =>
-      prev.includes(uuid) ? prev.filter((id) => id !== uuid) : [...prev, uuid]
-    );
+    setSelected((prev) => (prev.includes(uuid) ? prev.filter((id) => id !== uuid) : [...prev, uuid]));
   };
 
   const handleSelectAll = (event) => {
-    if (event.target.checked) {
-      setSelected(articles.map((article) => article.uuid));
-    } else {
-      setSelected([]);
-    }
+    if (event.target.checked) setSelected(articles.map((article) => article.uuid));
+    else setSelected([]);
   };
 
-  const handleBulkDelete = () => {
-    onBulkDelete(selected);
-    setSelected([]);
-  };
-
-  const handleBulkEdit = (field, value) => {
-    onBulkEdit(selected, field, value);
+  const handleBulkEdit = (status) => {
+    onBulkEdit(selected, "moderationStatus", status);
     setSelected([]);
   };
 
@@ -50,26 +24,17 @@ const ArticlesTable = ({ articles, onDelete, onBulkDelete, onBulkEdit }) => {
     <Box>
       {selected.length > 0 && (
         <Box sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleBulkDelete}
-            sx={{ mr: 2 }}
-          >
-            Delete Selected ({selected.length})
+          <Button variant="contained" color="primary" onClick={() => handleBulkEdit("scraped")} sx={{ mr: 2 }}>
+            Mark as Scraped ({selected.length})
           </Button>
-          <Button
-            variant="contained"
-            onClick={() => handleBulkEdit('sentToShopify', true)}
-            sx={{ mr: 2 }}
-          >
+          <Button variant="contained" color="error" onClick={() => handleBulkEdit("rejected")} sx={{ mr: 2 }}>
+            Mark as Rejected ({selected.length})
+          </Button>
+          <Button variant="contained" color="info" onClick={() => handleBulkEdit("aiProcessed")} sx={{ mr: 2 }}>
+            Mark as AI Processed
+          </Button>
+          <Button variant="contained" color="secondary" onClick={() => handleBulkEdit("sentToShopify")}>
             Mark as Sent to Shopify
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => handleBulkEdit('processedByAI', true)}
-          >
-            Mark as Processed by AI
           </Button>
         </Box>
       )}
@@ -89,8 +54,7 @@ const ArticlesTable = ({ articles, onDelete, onBulkDelete, onBulkEdit }) => {
               <TableCell>Published Date</TableCell>
               <TableCell>Category</TableCell>
               <TableCell>Geotag</TableCell>
-              <TableCell>AI Processed</TableCell>
-              <TableCell>Sent to Shopify</TableCell>
+              <TableCell>Moderation Status</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -98,48 +62,18 @@ const ArticlesTable = ({ articles, onDelete, onBulkDelete, onBulkEdit }) => {
             {articles.map((article) => (
               <TableRow key={article.uuid}>
                 <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={selected.includes(article.uuid)}
-                    onChange={() => handleSelect(article.uuid)}
-                  />
+                  <Checkbox checked={selected.includes(article.uuid)} onChange={() => handleSelect(article.uuid)} />
                 </TableCell>
                 <TableCell>{article.title}</TableCell>
                 <TableCell>{article.source}</TableCell>
-                <TableCell>{article.publishedAt ? formatDate(article.publishedAt) : '-'}</TableCell>
+                <TableCell>{article.publishedAt ? formatDate(article.publishedAt) : "-"}</TableCell>
                 <TableCell>{article.category}</TableCell>
-                <TableCell>{article.geotag || '-'}</TableCell>
+                <TableCell>{article.geotag || "-"}</TableCell>
+                <TableCell>{article.moderationStatus}</TableCell>
                 <TableCell>
-                  <Tooltip title={article.processedByAI ? 'Processed by AI' : 'Not Processed by AI'}>
-                    <SmartToyIcon
-                      fontSize="small"
-                      sx={{ color: article.processedByAI ? 'primary.main' : 'text.disabled' }}
-                    />
-                  </Tooltip>
-                </TableCell>
-                <TableCell>
-                  <Tooltip title={article.sentToShopify ? 'Sent to Shopify' : 'Not Sent to Shopify'}>
-                    <StoreIcon
-                      fontSize="small"
-                      sx={{ color: article.sentToShopify ? 'secondary.main' : 'text.disabled' }}
-                    />
-                  </Tooltip>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    component={RouterLink}
-                    to={`/article/edit/${article.uuid}`}
-                    state={{ from: '/admin' }}
-                    sx={{ mr: 1 }}
-                  >
+                  <Link component={RouterLink} to={`/article/edit/${article.uuid}`} state={{ from: "/admin" }} sx={{ mr: 1 }}>
                     Edit
                   </Link>
-                  <Button
-                    color="error"
-                    onClick={() => onDelete(article.uuid)}
-                    size="small"
-                  >
-                    Delete
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}

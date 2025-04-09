@@ -1,4 +1,3 @@
-// File: ./frontend/src/services/api.js
 import axios from "axios";
 
 const API = axios.create({
@@ -26,16 +25,16 @@ export const deleteArticle = async (uuid) => {
 };
 
 export const bulkDeleteArticles = async (uuids) => {
-  const res = await API.post('/articles/bulk-delete', { uuids });
+  const res = await API.post("/articles/bulk-delete", { uuids });
   return res.data;
 };
 
 export const bulkEditArticles = async (uuids, updates) => {
-  const res = await API.post('/articles/bulk-edit', { uuids, updates });
+  const res = await API.post("/articles/bulk-edit", { uuids, updates });
   return res.data;
 };
 
-export const scrapeSource = async (sourceName) => {
+export const triggerScrape = async (sourceName) => {
   const res = await API.post(`/system/scrape?source=${sourceName}`);
   return res.data;
 };
@@ -45,8 +44,9 @@ export const processWithAI = async (sourceName) => {
   return res.data;
 };
 
-export const publishShopify = async () => {
-  const res = await API.post(`/system/publish-shopify`);
+export const publishShopify = async (sourceName) => {
+  const url = sourceName ? `/system/publish-shopify?source=${sourceName}` : "/system/publish-shopify";
+  const res = await API.post(url);
   return res.data;
 };
 
