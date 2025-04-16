@@ -12,6 +12,7 @@ services:
     command: sh -c "ls -la /app/.env && env && node /app/server/index.js"
     depends_on:
       - mongo
+    restart: unless-stopped
   mongo:
     image: mongo:latest
     container_name: beansnews_mongo
@@ -19,6 +20,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    restart: unless-stopped
 
 volumes:
   mongo-data:
