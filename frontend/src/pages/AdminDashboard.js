@@ -6,7 +6,9 @@ import { useArticles } from "../hooks/useArticles";
 
 const AdminDashboard = () => {
   const [selectedSource, setSelectedSource] = useState("");
-  const filters = useMemo(() => ({ source: selectedSource || undefined }), [selectedSource]);
+  const filters = useMemo(() => {
+    return selectedSource ? { source: selectedSource } : {};
+  }, [selectedSource]);
   const { articles, loadingArticles, error, bulkEditArticles } = useArticles(filters);
   const sources = useMemo(() => [...new Set(articles.map((a) => a.source))], [articles]);
 

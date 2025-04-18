@@ -1,151 +1,154 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";  
 import { getArticles, getArticle, updateArticle, pushArticleToShopify, editArticleOnShopify as apiEditArticleOnShopify, bulkEditArticles as apiBulkEditArticles } from "../services/api";
-
-export const useArticles = (initialFilters = null) => {
-  const [articles, setArticles] = useState([]);
-  const [loadingArticles, setLoadingArticles] = useState(false);
-  const [loadingArticle, setLoadingArticle] = useState(false);
-  const [loadingUpdate, setLoadingUpdate] = useState(false);
-  const [loadingPush, setLoadingPush] = useState(false);
-  const [error, setError] = useState(null);
-  const prevFiltersRef = useRef(initialFilters);
-
-  const fetchArticles = useCallback(async (fetchFilters = initialFilters) => {
-    setLoadingArticles(true);
-    setError(null);
-    try {
-      const params = {};
-      if (fetchFilters?.moderationStatus) {
-        params.moderationStatus = JSON.stringify(fetchFilters.moderationStatus);
+  
+  export const useArticles = (initialFilters = null) => {
+    const [articles, setArticles] = useState([]);
+    const [loadingArticles, setLoadingArticles] = useState(false);
+    const [loadingArticle, setLoadingArticle] = useState(false);
+    const [loadingUpdate, setLoadingUpdate] = useState(false);
+    const [loadingPush, setLoadingPush] = useState(false);
+    const [error, setError] = useState(null);
+    const prevFiltersRef = useRef(initialFilters);
+  
+    const fetchArticles = useCallback(async (fetchFilters = initialFilters) => {
+      setLoadingArticles(true);
+      setError(null);
+      try {
+        const params = {};
+        if (fetchFilters?.moderationStatus) {
+          params.moderationStatus = JSON.stringify(fetchFilters.moderationStatus);
+        }
+        if (fetchFilters?.source) {
+          params.source = fetchFilters.source;
+        }
+        if (fetchFilters?.search) {
+          params.search = fetchFilters.search;
+        }
+        console.log("Fetching articles with params:", params);
+        const data = await getArticles(params);
+        console.log("Fetched articles:", data);
+        setArticles(data);
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to fetch articles";
+        setError(errorMessage);
+        console.error("Error fetching articles:", err);
+      } finally {
+        setLoadingArticles(false);
       }
-      if (fetchFilters?.source) {
-        params.source = fetchFilters.source;
+    }, [initialFilters]); // Keep initialFilters as a dependency for fetchArticles
+  
+    const fetchArticleById = useCallback(async (uuid) => {
+      setLoadingArticle(true);
+      setError(null);
+      try {
+        console.log("Fetching article with UUID:", uuid); // Debug log
+        const data = await getArticle(uuid);
+        console.log("Fetched article:", data); // Debug log
+        return data;
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to fetch article";
+        setError(errorMessage);
+        console.error("Error fetching article:", err);
+        throw err;
+      } finally {
+        setLoadingArticle(false);
       }
-      if (fetchFilters?.search) {
-        params.search = fetchFilters.search;
+    }, []); // No dependencies, since setLoadingArticle and setError are stable
+  
+    const updateArticleById = useCallback(async (uuid, updates) => {
+      setLoadingUpdate(true);
+      setError(null);
+      try {
+        const data = await updateArticle(uuid, updates);
+        setArticles((prev) =>
+          prev.map((article) => (article.uuid === uuid ? { ...article, ...data } : article))
+        );
+        return data;
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to update article";
+        setError(errorMessage);
+        console.error("Error updating article:", err);
+        throw err;
+      } finally {
+        setLoadingUpdate(false);
       }
-      const data = await getArticles(params);
-      setArticles(data);
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || "Failed to fetch articles";
-      setError(errorMessage);
-      console.error("Error fetching articles:", err);
-    } finally {
-      setLoadingArticles(false);
-    }
-  }, [initialFilters]);
-
-  const fetchArticleById = useCallback(async (uuid) => {
-    setLoadingArticle(true);
-    setError(null);
-    try {
-      const data = await getArticle(uuid);
-      if (!data) throw new Error("Article not found");
-      return data;
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || "Failed to fetch article";
-      setError(errorMessage);
-      console.error("Error fetching article:", err);
-      return null;
-    } finally {
-      setLoadingArticle(false);
-    }
-  }, []);
-
-  const updateArticleById = async (uuid, data) => {
-    setLoadingUpdate(true);
-    setError(null);
-    try {
-      const updated = await updateArticle(uuid, data);
-      setArticles((prev) => prev.map((article) => (article.uuid === uuid ? updated : article)));
-      return updated;
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || "Failed to update article";
-      setError(errorMessage);
-      console.error("Error updating article:", err);
-      throw err;
-    } finally {
-      setLoadingUpdate(false);
-    }
-  };
-
-  const bulkEditArticles = async (uuids, field, value) => {
-    setLoadingUpdate(true);
-    setError(null);
-    try {
-      const updates = { [field]: value };
-      await apiBulkEditArticles(uuids, updates);
-      setArticles((prev) =>
-        prev.map((article) =>
-          uuids.includes(article.uuid) ? { ...article, [field]: value } : article
-        )
-      );
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || "Failed to bulk edit articles";
-      setError(errorMessage);
-      console.error("Error bulk editing articles:", err);
-      throw err;
-    } finally {
-      setLoadingUpdate(false);
-    }
-  };
-
-  const pushToShopify = async (uuid) => {
-    setLoadingPush(true);
-    setError(null);
-    try {
-      const result = await pushArticleToShopify(uuid);
-      setArticles((prev) =>
-        prev.map((article) =>
-          article.uuid === uuid ? { ...article, moderationStatus: "sentToShopify" } : article
-        )
-      );
-      return result;
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || "Failed to push article to Shopify";
-      setError(errorMessage);
-      console.error("Error pushing article to Shopify:", err);
-      throw err;
-    } finally {
-      setLoadingPush(false);
-    }
-  };
-
-  const handleEditArticleOnShopify = useCallback(async (uuid, data) => {
-    setLoadingPush(true);
-    setError(null);
-    try {
-      const result = await apiEditArticleOnShopify(uuid, data); // Use renamed import
-      return result;
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || "Failed to edit article on Shopify";
-      setError(errorMessage);
-      console.error("Error editing article on Shopify:", err);
-      throw err;
-    } finally {
-      setLoadingPush(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (JSON.stringify(prevFiltersRef.current) !== JSON.stringify(initialFilters)) {
+    }, []);
+  
+    const bulkEditArticles = useCallback(async (uuids, key, value) => {
+      setLoadingUpdate(true);
+      setError(null);
+      try {
+        await apiBulkEditArticles(uuids, key, value);
+        setArticles((prev) =>
+          prev.map((article) =>
+            uuids.includes(article.uuid) ? { ...article, [key]: value } : article
+          )
+        );
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to bulk edit articles";
+        setError(errorMessage);
+        console.error("Error bulk editing articles:", err);
+        throw err;
+      } finally {
+        setLoadingUpdate(false);
+      }
+    }, []);
+  
+    const pushToShopify = useCallback(async (uuid) => {
+      setLoadingPush(true);
+      setError(null);
+      try {
+        const data = await pushArticleToShopify(uuid);
+        setArticles((prev) =>
+          prev.map((article) => (article.uuid === uuid ? { ...article, shopifyId: data.shopifyId, moderationStatus: "sentToShopify" } : article))
+        );
+        return data;
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to push to Shopify";
+        setError(errorMessage);
+        console.error("Error pushing to Shopify:", err);
+        throw err;
+      } finally {
+        setLoadingPush(false);
+      }
+    }, []);
+  
+    const handleEditArticleOnShopify = useCallback(async (uuid) => {
+      setLoadingPush(true);
+      setError(null);
+      try {
+        const data = await apiEditArticleOnShopify(uuid);
+        setArticles((prev) =>
+          prev.map((article) => (article.uuid === uuid ? { ...article, shopifyId: data.shopifyId, moderationStatus: "sentToShopify" } : article))
+        );
+        return data;
+      } catch (err) {
+        const errorMessage = err.response?.data?.error || "Failed to edit article on Shopify";
+        setError(errorMessage);
+        console.error("Error editing article on Shopify:", err);
+        throw err;
+      } finally {
+        setLoadingPush(false);
+      }
+    }, []);
+  
+    useEffect(() => {
       fetchArticles();
       prevFiltersRef.current = initialFilters;
-    }
-  }, [fetchArticles, initialFilters]);
-
-  return {
-    articles,
-    loadingArticles,
-    loadingArticle,
-    loadingUpdate,
-    loadingPush,
-    error,
-    fetchArticles,
-    fetchArticleById,
-    updateArticleById,
-    bulkEditArticles,
-    pushToShopify,
-    editArticleOnShopify: handleEditArticleOnShopify, // Export renamed function
+    }, [fetchArticles, initialFilters]);
+  
+    return {
+      articles,
+      loadingArticles,
+      loadingArticle,
+      loadingUpdate,
+      loadingPush,
+      error,
+      fetchArticles,
+      fetchArticleById,
+      updateArticleById,
+      bulkEditArticles,
+      pushToShopify,
+      editArticleOnShopify: handleEditArticleOnShopify,
+    };
   };
-};

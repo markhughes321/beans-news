@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -20,11 +20,13 @@ import { useArticles } from "../hooks/useArticles";
 import { ARTICLE_CATEGORIES } from "../utils/constants";
 import { formatDate } from "../utils/formatDate";
 import { processSingleArticleWithAI } from "../services/api";
+
 const formatDateForInput = (date) => {
   if (!date) return "";
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
+
 const ArticleEdit = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
@@ -39,31 +41,50 @@ const ArticleEdit = () => {
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
-  useEffect(() => {
-    const loadArticle = async () => {
-      setIsLoading(true);
+
+  const loadArticle = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      console.log("Loading article for UUID:", uuid); // Debug log
       const data = await fetchArticleById(uuid);
       if (data) {
         setArticle(data);
         setOriginalArticle(JSON.parse(JSON.stringify(data)));
+      } else {
+        console.warn("No article data returned for UUID:", uuid);
       }
+    } catch (err) {
+      console.error("Error loading article:", err);
+    } finally {
       setIsLoading(false);
-    };
-    loadArticle();
+    }
   }, [uuid, fetchArticleById]);
-  const handleChange = (e) => {
+
+  useEffect(() => {
+    loadArticle();
+  }, [loadArticle]); // Only depend on loadArticle, which is stable
+
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     let newValue = type === "checkbox" ? checked : value;
     if (name === "publishedAt") newValue = value ? new Date(value) : null;
-    setArticle((prev) => ({ ...prev, [name]: newValue }));
-    setHasChanges(JSON.stringify({ ...article, [name]: newValue }) !== JSON.stringify(originalArticle));
-  };
-  const handleTagsChange = (e) => {
+    setArticle((prev) => {
+      const updatedArticle = { ...prev, [name]: newValue };
+      setHasChanges(JSON.stringify(updatedArticle) !== JSON.stringify(originalArticle));
+      return updatedArticle;
+    });
+  }, [originalArticle]);
+
+  const handleTagsChange = useCallback((e) => {
     const tags = e.target.value;
     const newTags = typeof tags === "string" ? tags.split(",").map((tag) => tag.trim()) : tags;
-    setArticle((prev) => ({ ...prev, tags: newTags }));
-    setHasChanges(JSON.stringify({ ...article, tags: newTags }) !== JSON.stringify(originalArticle));
-  };
+    setArticle((prev) => {
+      const updatedArticle = { ...prev, tags: newTags };
+      setHasChanges(JSON.stringify(updatedArticle) !== JSON.stringify(originalArticle));
+      return updatedArticle;
+    });
+  }, [originalArticle]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -75,6 +96,7 @@ const ArticleEdit = () => {
       setShopifyError("Failed to save article");
     }
   };
+
   const handlePushToShopify = async () => {
     setShopifyMessage("");
     setShopifyError(null);
@@ -89,6 +111,7 @@ const ArticleEdit = () => {
       setShopifyError(err.message || "Failed to push article to Shopify");
     }
   };
+
   const handleEditOnShopify = async () => {
     setShopifyMessage("");
     setShopifyError(null);
@@ -103,6 +126,7 @@ const ArticleEdit = () => {
       setShopifyError("Failed to edit article on Shopify");
     }
   };
+
   const handleProcessWithAI = async () => {
     setAiMessage("");
     setShopifyError(null);
@@ -120,9 +144,11 @@ const ArticleEdit = () => {
       setAiProcessing(false);
     }
   };
+
   if (isLoading || loadingArticle) return <LoadingSpinner />;
   if (error) return <Box sx={{ p: 3 }}><Typography color="error">{error}<br />UUID: {uuid}</Typography></Box>;
   if (!article) return <Typography>No article data available.</Typography>;
+
   return (
     <Box sx={{ p: 2, maxWidth: 1200, mx: "auto", height: "100vh", overflow: "auto" }}>
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -197,4 +223,5 @@ const ArticleEdit = () => {
     </Box>
   );
 };
+
 export default ArticleEdit;

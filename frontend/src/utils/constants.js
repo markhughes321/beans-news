@@ -5,11 +5,10 @@ export const CATEGORIES = [
   "Culture",
   "Market",
   "Innovation",
-  "People",
+  "Roasting",
   "Competition",
   "Recipes",
 ];
-
 export const ARTICLE_CATEGORIES = [
   "Sustainability",
   "Design",
@@ -17,7 +16,7 @@ export const ARTICLE_CATEGORIES = [
   "Culture",
   "Market",
   "Innovation",
-  "People",
+  "Roasting",
   "Competition",
   "Recipes",
 ];

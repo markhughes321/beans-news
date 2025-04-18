@@ -1,9 +1,17 @@
 import axios from "axios";
+
 const API = axios.create({ baseURL: "/api" });
 
 export const getArticles = async (params = {}) => {
-  const res = await API.get("/articles", { params });
-  return res.data;
+  console.log("Making API request to /articles with params:", params);
+  try {
+    const res = await API.get("/articles", { params });
+    console.log("API response:", res.data);
+    return res.data;
+  } catch (err) {
+    console.error("API error:", err);
+    throw err;
+  }
 };
 
 export const getArticle = async (uuid) => {

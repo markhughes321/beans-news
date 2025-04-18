@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Link, Checkbox, Box } from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Link, Checkbox, Box, Typography } from "@mui/material";
 import { formatDate } from "../../utils/formatDate";
 
 const ArticlesTable = ({ articles, onBulkEdit }) => {
@@ -59,24 +59,32 @@ const ArticlesTable = ({ articles, onBulkEdit }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {articles.map((article) => (
-              <TableRow key={article.uuid}>
-                <TableCell padding="checkbox">
-                  <Checkbox checked={selected.includes(article.uuid)} onChange={() => handleSelect(article.uuid)} />
-                </TableCell>
-                <TableCell>{article.title}</TableCell>
-                <TableCell>{article.source}</TableCell>
-                <TableCell>{article.publishedAt ? formatDate(article.publishedAt) : "-"}</TableCell>
-                <TableCell>{article.category}</TableCell>
-                <TableCell>{article.geotag || "-"}</TableCell>
-                <TableCell>{article.moderationStatus}</TableCell>
-                <TableCell>
-                  <Link component={RouterLink} to={`/article/edit/${article.uuid}`} state={{ from: "/admin" }} sx={{ mr: 1 }}>
-                    Edit
-                  </Link>
+            {articles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  <Typography>No articles available.</Typography>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              articles.map((article) => (
+                <TableRow key={article.uuid}>
+                  <TableCell padding="checkbox">
+                    <Checkbox checked={selected.includes(article.uuid)} onChange={() => handleSelect(article.uuid)} />
+                  </TableCell>
+                  <TableCell>{article.title}</TableCell>
+                  <TableCell>{article.source}</TableCell>
+                  <TableCell>{article.publishedAt ? formatDate(article.publishedAt) : "-"}</TableCell>
+                  <TableCell>{article.category}</TableCell>
+                  <TableCell>{article.geotag || "-"}</TableCell>
+                  <TableCell>{article.moderationStatus}</TableCell>
+                  <TableCell>
+                    <Link component={RouterLink} to={`/article/edit/${article.uuid}`} state={{ from: "/admin" }} sx={{ mr: 1 }}>
+                      Edit
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>
