@@ -29,7 +29,7 @@ You are analyzing a coffee news article to extract and generate information base
   - Tags must be **unique** (no duplicates).
   - A maximum of **2 tags**. Return **1 tag** or **null** if no meaningful tags apply.
   - Only include a tag if it is clearly **mentioned or directly implied** and adds value.
-  - Avoid generic terms like "coffee", "business", or "origin" as tags.
+  - Avoid generic terms like "coffee", "Roasteries", "business", or "origin" as tags.
   - Remove unnecessary special characters (e.g., "Coffee Bros." becomes "Coffee Bros").
   Example:
   If the article mentions Tim Wendelboe’s roastery and La Marzocco’s machine, tags are: ["Tim Wendelboe", "La Marzocco"]

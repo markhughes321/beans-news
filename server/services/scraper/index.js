@@ -35,7 +35,7 @@ async function scrapeSource(sourceConfig) {
                 imageUrl: raw.imageUrl || null,
                 imageWidth: raw.imageWidth || null,
                 imageHeight: raw.imageHeight || null,
-                category: raw.category || "Market",
+                category: raw.category || null, // No default "Market"
               },
             }
           );
@@ -46,7 +46,7 @@ async function scrapeSource(sourceConfig) {
       }
       const newArticle = new Article({
         ...raw,
-        category: raw.category || "Market",
+        category: raw.category || null, // No default "Market"
         moderationStatus: "scraped",
       });
       await newArticle.save();

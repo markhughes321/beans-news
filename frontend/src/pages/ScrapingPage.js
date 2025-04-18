@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Tooltip
+  Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Tooltip, Snackbar, Alert,
 } from "@mui/material";
 import { triggerScrape, processWithAI, publishShopify, getScrapers, createScraper } from "../services/api";
 import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
@@ -15,6 +15,7 @@ const ScrapingPage = () => {
   const [openModal, setOpenModal] = useState(false);
   const [newScraper, setNewScraper] = useState({ name: "", type: "", url: "", cronSchedule: null });
   const [errors, setErrors] = useState({});
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
   useEffect(() => {
     const fetchSources = async () => {
@@ -39,13 +40,19 @@ const ScrapingPage = () => {
     setSourceStates((prev) => ({ ...prev, [sourceName]: { ...prev[sourceName], ...updates } }));
   };
 
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   const handleScrape = async (sourceName) => {
     updateSourceState(sourceName, { loadingAction: "scrape", error: null, scrapeResult: null });
     try {
       const response = await triggerScrape(sourceName);
       updateSourceState(sourceName, { scrapeResult: response });
+      setSnackbar({ open: true, message: `Scrape completed for ${sourceName}! New: ${response.newArticlesCount}, Updated: ${response.updatedArticlesCount}`, severity: "success" });
     } catch (err) {
       updateSourceState(sourceName, { error: err.response?.data?.error || `Failed to scrape ${sourceName}` });
+      setSnackbar({ open: true, message: `Failed to scrape ${sourceName}.`, severity: "error" });
     } finally {
       updateSourceState(sourceName, { loadingAction: null });
     }
@@ -56,8 +63,10 @@ const ScrapingPage = () => {
     try {
       const response = await processWithAI(sourceName);
       updateSourceState(sourceName, { aiResult: response });
+      setSnackbar({ open: true, message: `AI processing completed for ${sourceName}! Processed: ${response.processedCount}`, severity: "success" });
     } catch (err) {
       updateSourceState(sourceName, { error: err.response?.data?.error || `Failed to process ${sourceName} with AI` });
+      setSnackbar({ open: true, message: `Failed to process ${sourceName} with AI.`, severity: "error" });
     } finally {
       updateSourceState(sourceName, { loadingAction: null });
     }
@@ -68,8 +77,10 @@ const ScrapingPage = () => {
     try {
       const response = await publishShopify(sourceName);
       updateSourceState(sourceName, { shopifyResult: response });
+      setSnackbar({ open: true, message: `Shopify publishing completed for ${sourceName || "all sources"}!`, severity: "success" });
     } catch (err) {
       updateSourceState(sourceName, { error: err.response?.data?.error || `Failed to publish ${sourceName} to Shopify` });
+      setSnackbar({ open: true, message: `Failed to publish ${sourceName || "all sources"} to Shopify.`, severity: "error" });
     } finally {
       updateSourceState(sourceName, { loadingAction: null });
     }
@@ -87,7 +98,7 @@ const ScrapingPage = () => {
 
   const handleCreateScraper = async () => {
     if (!validateForm()) return;
-    const cronSchedule = dayjs(newScraper.cronSchedule).format("0 H * * *"); // Convert to cron format (e.g., "0 6 * * *")
+    const cronSchedule = dayjs(newScraper.cronSchedule).format("0 H * * *");
     try {
       const scraperData = { ...newScraper, cronSchedule };
       const response = await createScraper(scraperData);
@@ -95,8 +106,10 @@ const ScrapingPage = () => {
       setOpenModal(false);
       setNewScraper({ name: "", type: "", url: "", cronSchedule: null });
       setErrors({});
+      setSnackbar({ open: true, message: `Scraper ${response.scraper.name} created successfully!`, severity: "success" });
     } catch (err) {
       setErrors({ submit: err.response?.data?.error || "Failed to create scraper" });
+      setSnackbar({ open: true, message: "Failed to create scraper.", severity: "error" });
     }
   };
 
@@ -197,8 +210,6 @@ const ScrapingPage = () => {
           </Table>
         </TableContainer>
       )}
-
-      {/* Modal for Creating a New Scraper */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)}>
         <DialogTitle>Create a New Scraper</DialogTitle>
         <DialogContent>
@@ -257,6 +268,11 @@ const ScrapingPage = () => {
           <Button onClick={handleCreateScraper} variant="contained" color="primary">Create</Button>
         </DialogActions>
       </Dialog>
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

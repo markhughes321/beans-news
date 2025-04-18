@@ -10,9 +10,10 @@ import {
   InputLabel,
   Select,
   OutlinedInput,
-  Alert,
   Grid,
   IconButton,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -36,16 +37,14 @@ const ArticleEdit = () => {
   const [article, setArticle] = useState(null);
   const [originalArticle, setOriginalArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [shopifyMessage, setShopifyMessage] = useState("");
-  const [shopifyError, setShopifyError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [aiProcessing, setAiProcessing] = useState(false);
-  const [aiMessage, setAiMessage] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
 
   const loadArticle = useCallback(async () => {
     setIsLoading(true);
     try {
-      console.log("Loading article for UUID:", uuid); // Debug log
+      console.log("Loading article for UUID:", uuid);
       const data = await fetchArticleById(uuid);
       if (data) {
         setArticle(data);
@@ -62,7 +61,7 @@ const ArticleEdit = () => {
 
   useEffect(() => {
     loadArticle();
-  }, [loadArticle]); // Only depend on loadArticle, which is stable
+  }, [loadArticle]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -85,61 +84,60 @@ const ArticleEdit = () => {
     });
   }, [originalArticle]);
 
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await updateArticleById(uuid, article);
       setOriginalArticle(JSON.parse(JSON.stringify(article)));
       setHasChanges(false);
+      setSnackbar({ open: true, message: "Article saved successfully!", severity: "success" });
       navigate(from, { state: { filters } });
     } catch (err) {
-      setShopifyError("Failed to save article");
+      setSnackbar({ open: true, message: "Failed to save article.", severity: "error" });
     }
   };
 
   const handlePushToShopify = async () => {
-    setShopifyMessage("");
-    setShopifyError(null);
     try {
       const result = await pushToShopify(uuid);
-      setShopifyMessage(result.message);
+      setSnackbar({ open: true, message: "Article pushed to Shopify successfully!", severity: "success" });
       const updatedArticle = await fetchArticleById(uuid);
       setArticle(updatedArticle);
       setOriginalArticle(JSON.parse(JSON.stringify(updatedArticle)));
       setHasChanges(false);
     } catch (err) {
-      setShopifyError(err.message || "Failed to push article to Shopify");
+      setSnackbar({ open: true, message: err.message || "Failed to push article to Shopify.", severity: "error" });
     }
   };
 
   const handleEditOnShopify = async () => {
-    setShopifyMessage("");
-    setShopifyError(null);
     try {
       const result = await editArticleOnShopify(uuid, article);
-      setShopifyMessage(result.message);
+      setSnackbar({ open: true, message: "Article edited on Shopify successfully!", severity: "success" });
       const updatedArticle = await fetchArticleById(uuid);
       setArticle(updatedArticle);
       setOriginalArticle(JSON.parse(JSON.stringify(updatedArticle)));
       setHasChanges(false);
     } catch (err) {
-      setShopifyError("Failed to edit article on Shopify");
+      setSnackbar({ open: true, message: "Failed to edit article on Shopify.", severity: "error" });
     }
   };
 
   const handleProcessWithAI = async () => {
-    setAiMessage("");
-    setShopifyError(null);
     setAiProcessing(true);
     try {
       const result = await processSingleArticleWithAI(uuid);
-      setAiMessage(result.message);
+      setSnackbar({ open: true, message: "Article processed with AI successfully!", severity: "success" });
       const updatedArticle = await fetchArticleById(uuid);
       setArticle(updatedArticle);
       setOriginalArticle(JSON.parse(JSON.stringify(updatedArticle)));
       setHasChanges(false);
     } catch (err) {
-      setShopifyError("Failed to process article with AI");
+      setSnackbar({ open: true, message: "Failed to process article with AI.", severity: "error" });
     } finally {
       setAiProcessing(false);
     }
@@ -157,9 +155,6 @@ const ArticleEdit = () => {
         </IconButton>
         <Typography variant="h4">Edit Article</Typography>
       </Box>
-      {shopifyMessage && <Alert severity="success" sx={{ mb: 1 }}>{shopifyMessage}</Alert>}
-      {aiMessage && <Alert severity="success" sx={{ mb: 1 }}>{aiMessage}</Alert>}
-      {shopifyError && <Alert severity="error" sx={{ mb: 1 }}>{shopifyError}</Alert>}
       <form onSubmit={handleSubmit}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
@@ -183,6 +178,7 @@ const ArticleEdit = () => {
             <FormControl fullWidth variant="outlined" size="small" sx={{ mt: 2 }}>
               <InputLabel>Category</InputLabel>
               <Select name="category" value={article.category || ""} onChange={handleChange} label="Category">
+                <MenuItem value=""><em>None</em></MenuItem> {/* Allow empty selection */}
                 {ARTICLE_CATEGORIES.map((cat) => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
               </Select>
             </FormControl>
@@ -220,6 +216,11 @@ const ArticleEdit = () => {
           </Grid>
         </Grid>
       </form>
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

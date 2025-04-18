@@ -8,7 +8,7 @@ output_file="combined_project_files.js"
 [ -f "$output_file" ] && rm "$output_file"
 
 # Set limit
-file_limit=50
+file_limit=100
 
 # Determine search path
 if [ "$target_folder" == "frontend" ] || [ "$target_folder" == "server" ]; then

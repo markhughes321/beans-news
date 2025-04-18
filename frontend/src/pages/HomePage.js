@@ -10,6 +10,8 @@ import {
   Select,
   MenuItem,
   TextField,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import ArticleCard from "../components/common/ArticleCard";
 import CategoryBar from "../components/common/CategoryBar";
@@ -25,9 +27,9 @@ const HomePage = () => {
   const [filterAIProcessed, setFilterAIProcessed] = useState(undefined);
   const [filterSentToShopify, setFilterSentToShopify] = useState(undefined);
   const [selectedSource, setSelectedSource] = useState("");
-  const [searchTerm, setSearchTerm] = useState(""); // Input value
-  const [appliedSearch, setAppliedSearch] = useState(""); // Search term applied to filters
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const { articles, loadingArticles, error, fetchArticles, updateArticleById } = useArticles();
 
   useEffect(() => {
@@ -57,16 +59,14 @@ const HomePage = () => {
     return {
       moderationStatus: Object.keys(moderationStatusFilter).length > 0 ? moderationStatusFilter : undefined,
       source: selectedSource || undefined,
-      search: appliedSearch || undefined, // Use appliedSearch instead of searchTerm
+      search: appliedSearch || undefined,
     };
   }, [filterScraped, filterRejected, filterAIProcessed, filterSentToShopify, selectedSource, appliedSearch]);
 
-  // Fetch articles only when filters change (excluding searchTerm)
   useEffect(() => {
     fetchArticles(filters);
   }, [fetchArticles, filters]);
 
-  // Filter articles locally based on category
   const filteredArticles = useMemo(() => {
     let result = articles;
     if (selectedCategory) {
@@ -90,14 +90,20 @@ const HomePage = () => {
 
   const handleSearchSubmit = (event) => {
     if (event.key === "Enter") {
-      setAppliedSearch(searchTerm); // Apply the search term only on Enter
+      setAppliedSearch(searchTerm);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   const handleRejectArticle = async (uuid) => {
     try {
       await updateArticleById(uuid, { moderationStatus: "rejected" });
+      setSnackbar({ open: true, message: "Article rejected successfully!", severity: "success" });
     } catch (err) {
+      setSnackbar({ open: true, message: "Failed to reject article.", severity: "error" });
       console.error("Failed to reject article:", err);
     }
   };
@@ -122,7 +128,7 @@ const HomePage = () => {
             label="Search Articles"
             value={searchTerm}
             onChange={handleSearchChange}
-            onKeyDown={handleSearchSubmit} // Trigger search on Enter
+            onKeyDown={handleSearchSubmit}
             variant="outlined"
             size="small"
             placeholder="e.g., Drinks, brew guides"
@@ -217,6 +223,11 @@ const HomePage = () => {
           </Typography>
         )}
       </Box>
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

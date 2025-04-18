@@ -94,7 +94,7 @@ async function processArticleAI({ title, description, imageUrl, moderationStatus
   } catch (err) {
     logger.error("OpenAI processing error", { title, error: err.message });
     return {
-      category: "Market",
+      category: null, // No default "Market"
       geotag: null,
       tags: null,
       improvedDescription: description || "",
